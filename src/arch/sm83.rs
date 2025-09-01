@@ -22,6 +22,6 @@ pub fn decode(op: u8) -> Result<Sm83Instr, String> {
             immediate_args: Vec::with_capacity(0),
             stream_args: 2,
         }),
-        _ => Err(format!("unknow instruction: {:X}", op).to_string()),
+        _ => Err(format!("unknown instruction: {:X}", op).to_string()),
     }
 }
