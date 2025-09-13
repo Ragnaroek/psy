@@ -11,6 +11,7 @@ struct Cli {
 #[derive(Subcommand)]
 enum MainCommands {
     Disassemble(Disassemble),
+    Assemble(Assemble),
 }
 
 #[derive(Args)]
@@ -30,13 +31,27 @@ struct DisassembleGB {
     file: String,
 }
 
+#[derive(Args)]
+struct Assemble {
+    /// The input file to assemble
+    file: String,
+}
+
 fn main() -> Result<(), String> {
     let args = Cli::parse();
     match &args.command {
         MainCommands::Disassemble(cmd) => match &cmd.command {
             DisassembleSubCommands::GB(dis_gb) => disassemble_gb(&dis_gb),
         },
+        MainCommands::Assemble(asm) => assemble(asm),
     }
+}
+
+fn assemble(arg: &Assemble) -> Result<(), String> {
+    let mut file = File::open(&arg.file).map_err(|e| e.to_string())?;
+    let out = psy::asm::assemble(&mut file)?;
+    // TODO write object file
+    Ok(())
 }
 
 fn disassemble_gb(arg: &DisassembleGB) -> Result<(), String> {
