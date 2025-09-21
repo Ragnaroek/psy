@@ -70,7 +70,7 @@ fn main() -> Result<(), String> {
 
 fn assemble(arg: &Assemble) -> Result<(), String> {
     let mut file = File::open(&arg.file).map_err(|e| e.to_string())?;
-    let out = psy::asm::assemble(&mut file)?;
+    let out = psy::asm::assemble_file(&mut file)?;
     // TODO write object file
     Ok(())
 }

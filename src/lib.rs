@@ -4,4 +4,3 @@
 pub mod arch;
 pub mod asm;
 pub mod dasm;
-pub mod pasm;

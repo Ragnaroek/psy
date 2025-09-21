@@ -1,4 +1,5 @@
-use crate::pasm::parser::{Form, SExp, Symbol, TopLevel};
+use crate::asm::parser::{Form, Label, SExp, Symbol, TopLevel};
+use std::collections::HashMap;
 
 #[derive(Debug)]
 struct Section {
@@ -8,19 +9,33 @@ struct Section {
     label_only: bool,
 }
 
+#[derive(Debug)]
 struct State {
     sections: Vec<Section>,
+    current_section_name: Option<String>,
+    label_addresses: HashMap<Label, u64>, // TODO use address type
 }
 
 impl State {
     fn new() -> State {
         State {
             sections: Vec::new(),
+            current_section_name: None,
+            label_addresses: HashMap::new(),
         }
+    }
+
+    fn lookup_section(&self, name: &str) -> Option<&Section> {
+        for section in &self.sections {
+            if section.name == name {
+                return Some(section);
+            }
+        }
+        None
     }
 }
 
-pub fn interpret(pasm: TopLevel) -> Result<(), String> {
+pub fn assemble(pasm: TopLevel) -> Result<(), String> {
     let mut state = State::new();
 
     for form in &pasm.forms {
@@ -31,15 +46,16 @@ pub fn interpret(pasm: TopLevel) -> Result<(), String> {
                 } else if sym_name == "def-section" {
                     def_section(&mut state, form)?;
                 } else if sym_name == "section" {
-                    section(&mut state);
+                    section(&mut state, form)?;
                 } else if sym_name == "db" {
                     db(&mut state);
                 } else if sym_name == "label" {
                     label(&mut state);
-                } else if sym_name == "ld" {
-                    ld(&mut state);
                 } else if sym_name == "sub-section" {
                     sub_section(&mut state);
+                } else if sym_name == "ld" {
+                    //machine specific, should not be handled here
+                    ld(&mut state);
                 } else {
                     return Err(format!("unknown top-level: {:?}", sym_name));
                 }
@@ -49,7 +65,7 @@ pub fn interpret(pasm: TopLevel) -> Result<(), String> {
     }
 
     //debug
-    println!("sections = {:?}", state.sections);
+    println!("state = {:?}", state);
 
     Ok(())
 }
@@ -64,7 +80,7 @@ fn def_section(state: &mut State, form: &Form) -> Result<(), String> {
         return Err("illegal def-section".to_string());
     }
 
-    let name = expect_label_name(&form.exps[0])?;
+    let name = expect_section_name(&form.exps[0])?;
     let offset = expect_immediate_value_or(key_value(&form.exps, "offset")?, 0)?;
     let length = expect_immediate_value_or(key_value(&form.exps, "length")?, 0)?;
     let false_default = &sym_false();
@@ -80,9 +96,19 @@ fn def_section(state: &mut State, form: &Form) -> Result<(), String> {
     Ok(())
 }
 
-fn section(state: &mut State) {
-    // TODO update the current working section in the state!
-    println!("!section");
+fn section(state: &mut State, form: &Form) -> Result<(), String> {
+    if form.exps.len() != 1 {
+        return Err("illegal section".to_string());
+    }
+
+    let name = expect_section_name(&form.exps[0])?;
+    let may_section = { state.lookup_section(&name) };
+    if let Some(section) = may_section {
+        state.current_section_name = Some(section.name.clone());
+        Ok(())
+    } else {
+        Err(format!("no such section: {}", name))
+    }
 }
 
 fn db(state: &mut State) {
@@ -126,9 +152,16 @@ fn expect_bool_sym(sym: &Symbol) -> Result<bool, String> {
     }
 }
 
-fn expect_label_name(exp: &SExp) -> Result<String, String> {
+fn expect_section_name(exp: &SExp) -> Result<String, String> {
     match exp {
-        SExp::Symbol(Symbol::Label(name)) => Ok(name.clone()),
+        SExp::Symbol(Symbol::Section(name)) => Ok(name.clone()),
+        _ => Err("section name expected".to_string()),
+    }
+}
+
+fn expect_label_name(exp: &SExp) -> Result<Label, String> {
+    match exp {
+        SExp::Symbol(Symbol::Label(lbl)) => Ok(lbl.clone()),
         _ => Err("label expected".to_string()),
     }
 }

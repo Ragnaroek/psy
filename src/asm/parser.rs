@@ -4,6 +4,9 @@ mod parser_test;
 
 use std::{fs::File, io::Read, iter::Peekable, str::Chars};
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct Label(String);
+
 #[derive(Debug)]
 pub enum SExp {
     TopLevel(TopLevel),
@@ -13,16 +16,17 @@ pub enum SExp {
     Immediate(u64),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Symbol {
     Keyword(String), // : prefix
     Section(String), // . prefix
-    Label(String),   // ' prefix
+    Label(Label),    // ' prefix
     Sym(String),     //a-zA-Z only
 }
 
 #[derive(Debug)]
 pub struct Form {
+    pub label: Option<Label>,
     pub op: Symbol,
     pub exps: Vec<SExp>,
 }
@@ -61,7 +65,13 @@ fn parse_form(chars: &mut Peekable<Chars>) -> Result<Form, String> {
         return Err("unexpected form end".to_string());
     }
 
-    let op = parse_symbol(chars)?;
+    let mut label = None;
+    let mut op = parse_symbol(chars)?;
+    if is_label(&op) {
+        label = Some(sym_get_label(op)?);
+        skip_whitespace_and_comment(chars)?;
+        op = parse_symbol(chars)?
+    }
 
     let mut exps = Vec::new();
     'parse: loop {
@@ -88,11 +98,11 @@ fn parse_form(chars: &mut Peekable<Chars>) -> Result<Form, String> {
         };
     }
 
-    if exps.is_empty() {
+    if exps.is_empty() && label.is_none() {
         return Err("empty form".to_string());
     }
 
-    Ok(Form { op, exps })
+    Ok(Form { label, op, exps })
 }
 
 fn parse_symbol(chars: &mut Peekable<Chars>) -> Result<Symbol, String> {
@@ -103,7 +113,9 @@ fn parse_symbol(chars: &mut Peekable<Chars>) -> Result<Symbol, String> {
         None => return Err("unexpected end of symbol".to_string()),
         Some(ch) => ch,
     };
-    sym.push(first_char);
+    if first_char != ':' && first_char != '.' && first_char != '\'' {
+        sym.push(first_char);
+    }
 
     loop {
         let la = {
@@ -129,7 +141,7 @@ fn parse_symbol(chars: &mut Peekable<Chars>) -> Result<Symbol, String> {
     match first_char {
         ':' => Ok(Symbol::Keyword(sym)),
         '.' => Ok(Symbol::Section(sym)),
-        '\'' => Ok(Symbol::Label(sym)),
+        '\'' => Ok(Symbol::Label(Label(sym))),
         _ => Ok(Symbol::Sym(sym)),
     }
 }
@@ -210,6 +222,8 @@ fn parse_string(chars: &mut Peekable<Chars>) -> Result<String, String> {
     Ok(literal)
 }
 
+// helper
+
 fn expect(chars: &mut Peekable<Chars>, ch: char) -> Result<(), String> {
     if let Some(next_char) = chars.next() {
         if next_char == ch {
@@ -249,4 +263,18 @@ fn skip_line_comment(chars: &mut Peekable<Chars>) -> Result<(), String> {
         };
     }
     Ok(())
+}
+
+fn is_label(sym: &Symbol) -> bool {
+    match sym {
+        Symbol::Label(_) => true,
+        _ => false,
+    }
+}
+
+fn sym_get_label(sym: Symbol) -> Result<Label, String> {
+    match sym {
+        Symbol::Label(lbl) => Ok(lbl),
+        _ => Err("symbol not a label".to_string()),
+    }
 }
