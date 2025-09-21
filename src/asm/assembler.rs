@@ -1,10 +1,10 @@
-use crate::asm::parser::{Form, Label, SExp, Symbol, TopLevel};
+use crate::asm::parser::{Address, Form, Label, SExp, Symbol, TopLevel};
 use std::collections::HashMap;
 
 #[derive(Debug)]
 struct Section {
     name: String,
-    offset: u64,
+    offset: Address,
     length: u64,
     label_only: bool,
 }
@@ -13,7 +13,8 @@ struct Section {
 struct State {
     sections: Vec<Section>,
     current_section_name: Option<String>,
-    label_addresses: HashMap<Label, u64>, // TODO use address type
+    current_section_address: Address,
+    label_addresses: HashMap<Label, Address>,
 }
 
 impl State {
@@ -21,6 +22,7 @@ impl State {
         State {
             sections: Vec::new(),
             current_section_name: None,
+            current_section_address: Address(0),
             label_addresses: HashMap::new(),
         }
     }
@@ -48,7 +50,7 @@ pub fn assemble(pasm: TopLevel) -> Result<(), String> {
                 } else if sym_name == "section" {
                     section(&mut state, form)?;
                 } else if sym_name == "db" {
-                    db(&mut state);
+                    db(&mut state, form)?;
                 } else if sym_name == "label" {
                     label(&mut state);
                 } else if sym_name == "sub-section" {
@@ -81,7 +83,10 @@ fn def_section(state: &mut State, form: &Form) -> Result<(), String> {
     }
 
     let name = expect_section_name(&form.exps[0])?;
-    let offset = expect_immediate_value_or(key_value(&form.exps, "offset")?, 0)?;
+    let offset = Address(expect_immediate_value_or(
+        key_value(&form.exps, "offset")?,
+        0,
+    )?);
     let length = expect_immediate_value_or(key_value(&form.exps, "length")?, 0)?;
     let false_default = &sym_false();
     let label_only_sym = expect_symbol_or(key_value(&form.exps, "label-only")?, false_default)?;
@@ -102,18 +107,34 @@ fn section(state: &mut State, form: &Form) -> Result<(), String> {
     }
 
     let name = expect_section_name(&form.exps[0])?;
-    let may_section = { state.lookup_section(&name) };
+    let may_section = state.lookup_section(&name);
     if let Some(section) = may_section {
-        state.current_section_name = Some(section.name.clone());
+        let addr = section.offset;
+        let name = section.name.clone();
+        state.current_section_address = addr;
+        state.current_section_name = Some(name);
         Ok(())
     } else {
         Err(format!("no such section: {}", name))
     }
 }
 
-fn db(state: &mut State) {
-    // TODO link the label with this address in the state (and check that the label is not used already)
-    println!("!db");
+fn db(state: &mut State, db: &Form) -> Result<(), String> {
+    expect_in_section(state)?;
+
+    if let Some(label) = &db.label {
+        let lbl = label.clone(); // TODO is the clone free possible?
+        if state.label_addresses.contains_key(&lbl) {
+            return Err(format!("duplicate label definition: '{}", lbl.name()));
+        }
+        state
+            .label_addresses
+            .insert(lbl, state.current_section_address);
+    }
+
+    state.current_section_address.add_bytes(1);
+
+    Ok(())
 }
 
 fn ld(state: &mut State) {
@@ -135,6 +156,14 @@ static TRUE_SYM_NAME: &'static str = "true";
 
 fn sym_false() -> Symbol {
     Symbol::Sym(FALSE_SYM_NAME.to_string())
+}
+
+fn expect_in_section(state: &State) -> Result<(), String> {
+    if state.current_section_name.is_none() {
+        Err("not in a section".to_string())
+    } else {
+        Ok(())
+    }
 }
 
 fn expect_bool_sym(sym: &Symbol) -> Result<bool, String> {

@@ -4,8 +4,23 @@ mod parser_test;
 
 use std::{fs::File, io::Read, iter::Peekable, str::Chars};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub struct Label(String);
+
+impl Label {
+    pub fn name(&self) -> &str {
+        &self.0
+    }
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct Address(pub u64);
+
+impl Address {
+    pub fn add_bytes(&mut self, n: u64) {
+        self.0 += n * 8;
+    }
+}
 
 #[derive(Debug)]
 pub enum SExp {
