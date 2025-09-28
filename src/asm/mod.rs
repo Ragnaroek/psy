@@ -1,9 +1,11 @@
+pub mod assembler;
+mod parser;
+
+use crate::asm;
 use std::fs::File;
 
-use crate::pasm;
-
-pub fn assemble(file: &mut File) -> Result<Vec<u8>, String> {
-    let tl = pasm::parser::parse_file(file)?;
-    pasm::interpreter::interpret(tl)?;
+pub fn assemble_file(file: &mut File) -> Result<Vec<u8>, String> {
+    let tl = asm::parser::parse_file(file)?;
+    asm::assembler::assemble(tl)?;
     Ok(Vec::with_capacity(0))
 }
