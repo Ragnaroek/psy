@@ -17,10 +17,10 @@ pub fn disassemble(data: &[u8]) -> Result<Vec<String>, String> {
         if instr.stream_args == 0 {
             str.push(')')
         } else if instr.stream_args == 1 {
-            str.push_str(&format!(" {:x})", data[ip]));
+            str.push_str(&format!(" 0x{:x})", data[ip]));
         } else if instr.stream_args == 2 {
             let a16 = u16::from_le_bytes([data[ip], data[ip + 1]]);
-            str.push_str(&format!(" {:x})", a16));
+            str.push_str(&format!(" 0x{:x})", a16));
         }
         ip += instr.stream_args;
 
