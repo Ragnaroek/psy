@@ -6,10 +6,11 @@ use std::{fs::File, io::Read, iter::Peekable, str::Chars};
 
 #[derive(Debug)]
 pub enum SExp {
+    TopLevel(TopLevel),
     Symbol(Symbol),
     Form(Form),
     String(String),
-    Immediate(String), // TODO convert to u64 value for easier handling
+    Immediate(u64),
 }
 
 #[derive(Debug)]
@@ -26,30 +27,31 @@ pub struct Form {
     pub exps: Vec<SExp>,
 }
 
+#[derive(Debug)]
+pub struct TopLevel {
+    pub forms: Vec<Form>,
+}
+
 /*
 S => SExp*
 SExp => (SExp) | Symbol
 Symbol => Ascii-char*
 */
-pub fn parse_file(file: &mut File) -> Result<Form, String> {
+pub fn parse_file(file: &mut File) -> Result<TopLevel, String> {
     let mut buf = String::new();
     file.read_to_string(&mut buf).map_err(|e| e.to_string())?;
     parse(&mut buf.chars().peekable())
 }
 
-fn parse(chars: &mut Peekable<Chars>) -> Result<Form, String> {
+fn parse(chars: &mut Peekable<Chars>) -> Result<TopLevel, String> {
     let mut forms = Vec::new();
     loop {
         if skip_whitespace_and_comment(chars)? {
             break;
         }
-        forms.push(SExp::Form(parse_form(chars)?));
+        forms.push(parse_form(chars)?);
     }
-
-    Ok(Form {
-        op: Symbol::Sym("progn".to_string()),
-        exps: forms,
-    })
+    Ok(TopLevel { forms })
 }
 
 fn parse_form(chars: &mut Peekable<Chars>) -> Result<Form, String> {
@@ -112,7 +114,7 @@ fn parse_symbol(chars: &mut Peekable<Chars>) -> Result<Symbol, String> {
             }
         };
 
-        if la.is_alphabetic() || la == '-' {
+        if la.is_alphanumeric() || la == '-' {
             chars.advance_by(1).map_err(|e| e.to_string())?;
             sym.push(la);
         } else {
@@ -124,10 +126,15 @@ fn parse_symbol(chars: &mut Peekable<Chars>) -> Result<Symbol, String> {
         return Err("error: empty symbol".to_string());
     }
 
-    Ok(Symbol::Sym(sym))
+    match first_char {
+        ':' => Ok(Symbol::Keyword(sym)),
+        '.' => Ok(Symbol::Section(sym)),
+        '\'' => Ok(Symbol::Label(sym)),
+        _ => Ok(Symbol::Sym(sym)),
+    }
 }
 
-fn parse_immediate(chars: &mut Peekable<Chars>) -> Result<String, String> {
+fn parse_immediate(chars: &mut Peekable<Chars>) -> Result<u64, String> {
     let mut immediate = String::new();
 
     let may_first_num = chars.next();
@@ -144,11 +151,11 @@ fn parse_immediate(chars: &mut Peekable<Chars>) -> Result<String, String> {
     let may_second_num = chars.next();
     let mut is_hex = false;
     match may_second_num {
-        None => return Ok(immediate),
+        None => return Ok(parse_number_value(&immediate, false)?),
         Some(ch) => match ch {
             'x' => {
                 is_hex = true;
-                immediate.push('x')
+                immediate.clear();
             }
             other => immediate.push(other),
         },
@@ -171,7 +178,21 @@ fn parse_immediate(chars: &mut Peekable<Chars>) -> Result<String, String> {
         }
     }
 
-    Ok(immediate)
+    parse_number_value(&immediate, is_hex)
+}
+
+fn parse_number_value(str: &str, is_hex: bool) -> Result<u64, String> {
+    if is_hex {
+        let hex_u64 = u64::from_str_radix(str, 16);
+        if let Ok(val_u64) = hex_u64 {
+            Ok(val_u64)
+        } else {
+            Err(format!("invalid hex string: {}", str))
+        }
+    } else {
+        let u64_val: u64 = str.parse::<u64>().map_err(|e| e.to_string())?;
+        Ok(u64_val)
+    }
 }
 
 fn parse_string(chars: &mut Peekable<Chars>) -> Result<String, String> {

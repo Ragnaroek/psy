@@ -12,6 +12,7 @@ struct Cli {
 enum MainCommands {
     Disassemble(Disassemble),
     Assemble(Assemble),
+    Link(Link),
 }
 
 #[derive(Args)]
@@ -37,13 +38,33 @@ struct Assemble {
     file: String,
 }
 
+#[derive(Args)]
+struct Link {
+    #[command(subcommand)]
+    command: LinkSubCommands,
+}
+
+#[derive(Subcommand)]
+enum LinkSubCommands {
+    GB(LinkGB),
+}
+
+#[derive(Args)]
+struct LinkGB {
+    /// The input files to link
+    file: Vec<String>,
+}
+
 fn main() -> Result<(), String> {
     let args = Cli::parse();
     match &args.command {
         MainCommands::Disassemble(cmd) => match &cmd.command {
-            DisassembleSubCommands::GB(dis_gb) => disassemble_gb(&dis_gb),
+            DisassembleSubCommands::GB(dis_gb_arg) => disassemble_gb(&dis_gb_arg),
         },
         MainCommands::Assemble(asm) => assemble(asm),
+        MainCommands::Link(cmd) => match &cmd.command {
+            LinkSubCommands::GB(link_gb_arg) => link_gb(&link_gb_arg),
+        },
     }
 }
 
@@ -60,6 +81,11 @@ fn disassemble_gb(arg: &DisassembleGB) -> Result<(), String> {
     for instruction in &instructions {
         println!("{}", instruction)
     }
+    Ok(())
+}
+
+fn link_gb(arg: &LinkGB) -> Result<(), String> {
+    // TODO
     Ok(())
 }
 
