@@ -1,4 +1,4 @@
-(include "gb_dma")
+(include :std "gb/dma")
 
 (section .header)
 (jp 'entry-point)

@@ -1,5 +1,6 @@
-use crate::asm::parser::{Address, Form, Label, SExp, Symbol, TopLevel};
+use crate::asm::parser::{Address, Form, Label, SExp, Symbol, TopLevel, parse_file};
 use std::collections::HashMap;
+use std::fs::File;
 
 #[derive(Debug)]
 struct Section {
@@ -39,25 +40,34 @@ impl State {
 
 pub fn assemble(pasm: TopLevel) -> Result<(), String> {
     let mut state = State::new();
+    assemble_in_state(pasm, &mut state)?;
 
+    //debug
+    println!("state = {:?}", state);
+    Ok(())
+}
+
+fn assemble_in_state(pasm: TopLevel, state: &mut State) -> Result<(), String> {
     for form in &pasm.forms {
         match &form.op {
             Symbol::Sym(sym_name) => {
                 if sym_name == "include" {
-                    include(&mut state);
+                    include(state, form)?;
                 } else if sym_name == "def-section" {
-                    def_section(&mut state, form)?;
+                    def_section(state, form)?;
                 } else if sym_name == "section" {
-                    section(&mut state, form)?;
+                    section(state, form)?;
                 } else if sym_name == "db" {
-                    db(&mut state, form)?;
+                    db(state, form)?;
                 } else if sym_name == "label" {
-                    label(&mut state);
+                    label(state);
                 } else if sym_name == "sub-section" {
-                    sub_section(&mut state);
+                    sub_section(state);
+                // the following forms are tempoarily handled here. Plan is
+                // to convert this to macros that emits bytes with low-level primitives
                 } else if sym_name == "ld" {
                     //machine specific, should not be handled here
-                    ld(&mut state);
+                    ld(state);
                 } else {
                     return Err(format!("unknown top-level: {:?}", sym_name));
                 }
@@ -65,16 +75,28 @@ pub fn assemble(pasm: TopLevel) -> Result<(), String> {
             sym => return Err(format!("illegal top-level form: {:?}", sym)),
         }
     }
-
-    //debug
-    println!("state = {:?}", state);
-
     Ok(())
 }
 
-fn include(state: &mut State) {
-    // TODO read file and interpret this one first!
-    println!("!include todo");
+fn include(state: &mut State, form: &Form) -> Result<(), String> {
+    if form.exps.len() < 2 {
+        return Err("include must at least provide file to include".to_string());
+    }
+
+    let file_name = if is_keyword(&form.exps[0], "std") {
+        expect_has_sexp_at(&form.exps, 1, "std include path required")?;
+        let std_file = expect_string(&form.exps[1])?;
+        format!("stdlib/{}.asm", std_file)
+    } else {
+        expect_has_sexp_at(&form.exps, 0, "include path required")?;
+        let file = expect_string(&form.exps[0])?;
+        format!("{}.asm", file)
+    };
+
+    let mut file = File::open(file_name).map_err(|e| e.to_string())?;
+    let tl = parse_file(&mut file)?;
+    assemble_in_state(tl, state)?;
+    Ok(())
 }
 
 fn def_section(state: &mut State, form: &Form) -> Result<(), String> {
@@ -181,6 +203,13 @@ fn expect_bool_sym(sym: &Symbol) -> Result<bool, String> {
     }
 }
 
+fn expect_string(exp: &SExp) -> Result<String, String> {
+    match exp {
+        SExp::String(str) => Ok(str.clone()),
+        _ => Err("string expected".to_string()),
+    }
+}
+
 fn expect_section_name(exp: &SExp) -> Result<String, String> {
     match exp {
         SExp::Symbol(Symbol::Section(name)) => Ok(name.clone()),
@@ -201,7 +230,7 @@ fn expect_immediate_value_or(exp: Option<&SExp>, or: u64) -> Result<u64, String>
     if let Some(exp) = exp {
         match exp {
             SExp::Immediate(val) => Ok(*val),
-            _ => Err("not an immediate value".to_string()),
+            _ => Err(format!("not an immediate value: {:?}", exp)),
         }
     } else {
         Ok(or)
@@ -217,6 +246,13 @@ fn expect_symbol_or<'a>(exp: Option<&'a SExp>, or: &'a Symbol) -> Result<&'a Sym
     } else {
         Ok(or)
     }
+}
+
+fn expect_has_sexp_at(exps: &[SExp], i: usize, err: &str) -> Result<(), String> {
+    if exps.len() <= i {
+        return Err(format!("expected a '{}' but got nothing", err));
+    }
+    Ok(())
 }
 
 fn is_keyword(exp: &SExp, name: &str) -> bool {

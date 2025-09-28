@@ -1,6 +1,7 @@
-
-def TILEMAP0 equ $9800 ; $9800-$9BFF
-def TILEMAP1 equ $9C00 ; $9C00-$9FFF
+;TODO address constants
+;
+;def TILEMAP0 equ $9800 ; $9800-$9BFF
+;def TILEMAP1 equ $9C00 ; $9C00-$9FFF
 
 (def-section .tile-map-0
     :offset 0x9800
@@ -12,7 +13,7 @@ def TILEMAP1 equ $9C00 ; $9C00-$9FFF
     :offset 0x9C00)
 
 (def-section .header
-    :offset :0x100)
+    :offset 0x100)
 
 (def-section .rom0
     :offset 0x150
