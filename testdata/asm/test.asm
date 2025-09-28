@@ -1,4 +1,4 @@
-(include "gb-dma") ; loads all the stuff for the dma-gameboy, especially a lot of macros to set the proper gameboy stuff
+(include "gb_dma") ; loads all the stuff for the dma-gameboy, especially a lot of macros to set the proper gameboy stuff
 ;; include def ideas
 
 (def-section .sram

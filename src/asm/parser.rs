@@ -22,7 +22,7 @@ impl Address {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum SExp {
     TopLevel(TopLevel),
     Symbol(Symbol),
@@ -35,18 +35,19 @@ pub enum SExp {
 pub enum Symbol {
     Keyword(String), // : prefix
     Section(String), // . prefix
+    Reg(String),     // % prefix
     Label(Label),    // ' prefix
     Sym(String),     //a-zA-Z only
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Form {
     pub label: Option<Label>,
     pub op: Symbol,
     pub exps: Vec<SExp>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct TopLevel {
     pub forms: Vec<Form>,
 }
@@ -68,7 +69,17 @@ fn parse(chars: &mut Peekable<Chars>) -> Result<TopLevel, String> {
         if skip_whitespace_and_comment(chars)? {
             break;
         }
-        forms.push(parse_form(chars)?);
+
+        let may_form = parse_form(chars);
+        if may_form.is_ok() {
+            forms.push(may_form.unwrap());
+        } else {
+            return Err(format!(
+                "error parsing form #{}: {:?}",
+                forms.len() + 1,
+                may_form.err()
+            ));
+        }
     }
     Ok(TopLevel { forms })
 }
@@ -113,10 +124,6 @@ fn parse_form(chars: &mut Peekable<Chars>) -> Result<Form, String> {
         };
     }
 
-    if exps.is_empty() && label.is_none() {
-        return Err("empty form".to_string());
-    }
-
     Ok(Form { label, op, exps })
 }
 
@@ -128,7 +135,7 @@ fn parse_symbol(chars: &mut Peekable<Chars>) -> Result<Symbol, String> {
         None => return Err("unexpected end of symbol".to_string()),
         Some(ch) => ch,
     };
-    if first_char != ':' && first_char != '.' && first_char != '\'' {
+    if first_char != ':' && first_char != '.' && first_char != '\'' && first_char != '%' {
         sym.push(first_char);
     }
 
@@ -157,6 +164,7 @@ fn parse_symbol(chars: &mut Peekable<Chars>) -> Result<Symbol, String> {
         ':' => Ok(Symbol::Keyword(sym)),
         '.' => Ok(Symbol::Section(sym)),
         '\'' => Ok(Symbol::Label(Label(sym))),
+        '%' => Ok(Symbol::Reg(sym)),
         _ => Ok(Symbol::Sym(sym)),
     }
 }
@@ -175,17 +183,17 @@ fn parse_immediate(chars: &mut Peekable<Chars>) -> Result<u64, String> {
         }
     }
 
-    let may_second_num = chars.next();
+    let may_second_num = chars.peek();
     let mut is_hex = false;
     match may_second_num {
         None => return Ok(parse_number_value(&immediate, false)?),
-        Some(ch) => match ch {
-            'x' => {
+        Some(ch) => {
+            if *ch == 'x' {
                 is_hex = true;
+                chars.next(); //consume lookahead char
                 immediate.clear();
             }
-            other => immediate.push(other),
-        },
+        }
     }
 
     loop {
