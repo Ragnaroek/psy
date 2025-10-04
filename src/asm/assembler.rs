@@ -6,8 +6,10 @@ use std::fs::File;
 struct Section {
     name: String,
     offset: Address,
-    length: u64,
+    length: Option<u64>,
     label_only: bool,
+    memory: Vec<u8>,
+    mem_ptr: usize, // where the assembler is currently defining memory, always points an the next free mem
 }
 
 #[derive(Debug)]
@@ -30,6 +32,15 @@ impl State {
 
     fn lookup_section(&self, name: &str) -> Option<&Section> {
         for section in &self.sections {
+            if section.name == name {
+                return Some(section);
+            }
+        }
+        None
+    }
+
+    fn lookup_section_mut(&mut self, name: &str) -> Option<&mut Section> {
+        for section in &mut self.sections {
             if section.name == name {
                 return Some(section);
             }
@@ -68,6 +79,14 @@ fn assemble_in_state(pasm: TopLevel, state: &mut State) -> Result<(), String> {
                 } else if sym_name == "ld" {
                     //machine specific, should not be handled here
                     ld(state);
+                } else if sym_name == "jp" {
+                    jp(state, form)?;
+                } else if sym_name == "inc" {
+                    inc(state);
+                } else if sym_name == "dec" {
+                    dec(state);
+                } else if sym_name == "jr" {
+                    jr(state);
                 } else {
                     return Err(format!("unknown top-level: {:?}", sym_name));
                 }
@@ -109,16 +128,31 @@ fn def_section(state: &mut State, form: &Form) -> Result<(), String> {
         key_value(&form.exps, "offset")?,
         0,
     )?);
-    let length = expect_immediate_value_or(key_value(&form.exps, "length")?, 0)?;
+
+    let may_length = key_value(&form.exps, "length")?;
+    let length = if let Some(exp) = may_length {
+        Some(expect_immediate(exp)?)
+    } else {
+        None
+    };
+
     let false_default = &sym_false();
     let label_only_sym = expect_symbol_or(key_value(&form.exps, "label-only")?, false_default)?;
     let label_only = expect_bool_sym(label_only_sym)?;
+
+    let memory = if let Some(len) = length {
+        vec![0; len as usize]
+    } else {
+        Vec::new()
+    };
 
     state.sections.push(Section {
         name,
         offset,
         length,
         label_only,
+        memory,
+        mem_ptr: 0,
     });
     Ok(())
 }
@@ -159,16 +193,42 @@ fn db(state: &mut State, db: &Form) -> Result<(), String> {
     Ok(())
 }
 
-fn ld(state: &mut State) {
-    println!("!ld");
-}
-
 fn label(state: &mut State) {
     println!("!label");
 }
 
 fn sub_section(state: &mut State) {
     println!("!sub-section");
+}
+
+// non-primitive forms, temporarily implemented in Rust directly
+
+fn ld(state: &mut State) {
+    println!("!ld");
+}
+
+fn jp(state: &mut State, form: &Form) -> Result<(), String> {
+    let sec = expect_in_w_sec(state)?;
+
+    // TODO just a dummy write!
+    // Impl JP a16 if second param is a label or immediate. If label take the current value from the label!!
+    // Write "C3 a16" into byte stream!
+    sec.memory[sec.mem_ptr] = 6;
+
+    println!("!jp");
+    Ok(())
+}
+
+fn jr(state: &mut State) {
+    println!("!jr");
+}
+
+fn inc(state: &mut State) {
+    println!("!inc");
+}
+
+fn dec(state: &mut State) {
+    println!("!dec");
 }
 
 // interpret helper
@@ -224,14 +284,18 @@ fn expect_label_name(exp: &SExp) -> Result<Label, String> {
     }
 }
 
+fn expect_immediate(exp: &SExp) -> Result<u64, String> {
+    match exp {
+        SExp::Immediate(val) => Ok(*val),
+        _ => Err(format!("not an immediate value: {:?}", exp)),
+    }
+}
+
 // If the Sexp is not a immediate value it will return an error.
 // If the Option is None it will use the or value.
 fn expect_immediate_value_or(exp: Option<&SExp>, or: u64) -> Result<u64, String> {
     if let Some(exp) = exp {
-        match exp {
-            SExp::Immediate(val) => Ok(*val),
-            _ => Err(format!("not an immediate value: {:?}", exp)),
-        }
+        expect_immediate(exp)
     } else {
         Ok(or)
     }
@@ -253,6 +317,22 @@ fn expect_has_sexp_at(exps: &[SExp], i: usize, err: &str) -> Result<(), String> 
         return Err(format!("expected a '{}' but got nothing", err));
     }
     Ok(())
+}
+
+fn expect_in_w_sec<'a>(state: &'a mut State) -> Result<&'a mut Section, String> {
+    let curr_name = state.current_section_name.clone();
+    if let Some(sec_name) = curr_name {
+        let sec = state
+            .lookup_section_mut(&sec_name)
+            .expect("a current section");
+        if sec.label_only {
+            Err(format!("section {} is label-only", sec_name))
+        } else {
+            Ok(sec)
+        }
+    } else {
+        Err("not in a section".to_string())
+    }
 }
 
 fn is_keyword(exp: &SExp, name: &str) -> bool {

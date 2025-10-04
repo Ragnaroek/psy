@@ -13,7 +13,8 @@
     :offset 0x9C00)
 
 (def-section .header
-    :offset 0x100)
+    :offset 0x100
+    :length 0x50)
 
 (def-section .rom0
     :offset 0x150

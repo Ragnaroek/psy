@@ -1,4 +1,4 @@
-use clap::{Args, Parser, Subcommand};
+use clap::{ArgAction, Args, Parser, Subcommand};
 use std::fs::File;
 use std::io::Read;
 
@@ -36,6 +36,10 @@ struct DisassembleGB {
 struct Assemble {
     /// The input file to assemble
     file: String,
+    /// Will assemble a 'flat' binary. All sections have to be defined for this
+    /// and the result is a direct binary output, not an object file that can be linked.
+    #[clap(long, short, action=ArgAction::SetTrue)]
+    flat: bool,
 }
 
 #[derive(Args)]
@@ -69,6 +73,10 @@ fn main() -> Result<(), String> {
 }
 
 fn assemble(arg: &Assemble) -> Result<(), String> {
+    if !arg.flat {
+        return Err("currently only flat mode assemble is supported".to_string());
+    }
+
     let mut file = File::open(&arg.file).map_err(|e| e.to_string())?;
     let out = psy::asm::assemble_file(&mut file)?;
     // TODO write object file

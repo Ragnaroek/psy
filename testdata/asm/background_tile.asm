@@ -1,3 +1,6 @@
+; non trivial psy gb program
+; ported from: https://github.com/tbsp/simple-gb-asm-examples/blob/master/src/background-tile/background-tile.asm
+
 (include :std "gb/dma")
 
 (section .header)
@@ -21,5 +24,15 @@
 
 ('loop-forever jr 'loop-forever)
 
-('tile-data db 0)
-; TODO define the tile data
+(label 'tile-data)
+(db 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)
+
+(label 'block)
+(db 0b00000000 0b11111111)
+(db 0b01000010 0b10000001)
+(db 0b00000000 0b11111111)
+(db 0b01000010 0b10000001)
+(db 0b00000000 0b11111111)
+(db 0b01000010 0b10000001)
+(db 0b00000000 0b11111111)
+(db 0b11111111 0b11111111)
