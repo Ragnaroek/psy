@@ -17,8 +17,16 @@
     :offset 0x100
     :length 0x50)
 
+; a ROM has at least to 16 KiB Banks, always named here
+; rom0 and rom1
 (def-section .rom0
     :offset 0x150
-    :length 100)
+    :length 0x4000) ; 16 KiB
 (section .rom0)
-('entry-point db)
+('rom0 db)
+
+(def-section .rom1
+    :offset 0x4150
+    :length 0x4000) ; 16 KiB
+(section .rom1)
+('rom1 db)

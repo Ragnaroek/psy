@@ -248,7 +248,16 @@ fn db(state: &mut State, db: &Form) -> Result<(), String> {
             .insert(lbl, state.current_section_address);
     }
 
-    state.current_section_address.add_bytes(1);
+    if !db.exps.is_empty() {
+        state
+            .current_section_address
+            .add_bytes(db.exps.len() as u64);
+        let sec = expect_in_w_sec(state)?;
+        for exp in &db.exps {
+            let v = expect_immediate(exp)?;
+            sec.memory.push_u8(v as u8);
+        }
+    }
 
     Ok(())
 }
