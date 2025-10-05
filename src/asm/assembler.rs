@@ -1,6 +1,32 @@
 use crate::asm::parser::{Address, Form, Label, SExp, Symbol, TopLevel, parse_file};
 use std::collections::HashMap;
 use std::fs::File;
+use std::io::Write;
+use std::path::{Path, PathBuf};
+
+pub struct Options {
+    pub flat: bool,
+    pub out: PathBuf,
+}
+
+#[derive(Debug)]
+struct Memory {
+    pub mem: Vec<u8>,
+    pub mem_ptr: usize, // where the assembler is currently defining memory, always points an the next free mem
+}
+
+impl Memory {
+    fn push_u8(&mut self, v: u8) {
+        self.mem[self.mem_ptr] = v;
+        self.mem_ptr += 1;
+    }
+
+    fn push_u16(&mut self, v: u16) {
+        let bytes = v.to_le_bytes();
+        self.push_u8(bytes[0]);
+        self.push_u8(bytes[1]);
+    }
+}
 
 #[derive(Debug)]
 struct Section {
@@ -8,8 +34,7 @@ struct Section {
     offset: Address,
     length: Option<u64>,
     label_only: bool,
-    memory: Vec<u8>,
-    mem_ptr: usize, // where the assembler is currently defining memory, always points an the next free mem
+    memory: Memory,
 }
 
 #[derive(Debug)]
@@ -49,12 +74,40 @@ impl State {
     }
 }
 
-pub fn assemble(pasm: TopLevel) -> Result<(), String> {
+pub fn assemble(pasm: TopLevel, options: Options) -> Result<(), String> {
     let mut state = State::new();
     assemble_in_state(pasm, &mut state)?;
 
-    //debug
-    println!("state = {:?}", state);
+    if options.flat {
+        state_to_flat(&mut state, &options.out)
+    } else {
+        Err("object file assembly currently not supported".to_string())
+    }
+}
+
+fn state_to_flat(state: &mut State, out: &Path) -> Result<(), String> {
+    state.sections.sort_by_key(|section| section.offset);
+
+    let mut out_file = File::create(out).map_err(|e| e.to_string())?;
+
+    let mut last_written = 0;
+    for sec in &state.sections {
+        if sec.label_only {
+            continue;
+        }
+
+        let fill_length = sec.offset.0 - last_written;
+        if fill_length > 0 {
+            let fill = vec![0; fill_length as usize];
+            out_file.write(&fill).map_err(|e| e.to_string())?;
+        }
+        out_file.write(&sec.memory.mem).map_err(|e| e.to_string())?;
+        last_written = sec.offset.0
+            + sec
+                .length
+                .expect("flat assembly needs sections with specified length");
+    }
+
     Ok(())
 }
 
@@ -87,6 +140,8 @@ fn assemble_in_state(pasm: TopLevel, state: &mut State) -> Result<(), String> {
                     dec(state);
                 } else if sym_name == "jr" {
                     jr(state);
+                } else if sym_name == "nop" {
+                    nop(state)?;
                 } else {
                     return Err(format!("unknown top-level: {:?}", sym_name));
                 }
@@ -141,9 +196,15 @@ fn def_section(state: &mut State, form: &Form) -> Result<(), String> {
     let label_only = expect_bool_sym(label_only_sym)?;
 
     let memory = if let Some(len) = length {
-        vec![0; len as usize]
+        Memory {
+            mem: vec![0; len as usize],
+            mem_ptr: 0,
+        }
     } else {
-        Vec::new()
+        Memory {
+            mem: Vec::new(),
+            mem_ptr: 0,
+        }
     };
 
     state.sections.push(Section {
@@ -152,7 +213,6 @@ fn def_section(state: &mut State, form: &Form) -> Result<(), String> {
         length,
         label_only,
         memory,
-        mem_ptr: 0,
     });
     Ok(())
 }
@@ -203,19 +263,27 @@ fn sub_section(state: &mut State) {
 
 // non-primitive forms, temporarily implemented in Rust directly
 
+fn nop(state: &mut State) -> Result<(), String> {
+    let sec = expect_in_w_sec(state)?;
+    sec.memory.push_u8(0);
+    Ok(())
+}
+
 fn ld(state: &mut State) {
     println!("!ld");
 }
 
 fn jp(state: &mut State, form: &Form) -> Result<(), String> {
+    let lbl = expect_label_name(&form.exps[0])?;
+    let lbl_address = if let Some(address) = state.label_addresses.get(&lbl) {
+        address.0 as u16
+    } else {
+        return Err(format!("no address for label '{}", lbl.name()));
+    };
+
     let sec = expect_in_w_sec(state)?;
-
-    // TODO just a dummy write!
-    // Impl JP a16 if second param is a label or immediate. If label take the current value from the label!!
-    // Write "C3 a16" into byte stream!
-    sec.memory[sec.mem_ptr] = 6;
-
-    println!("!jp");
+    sec.memory.push_u8(0xC3);
+    sec.memory.push_u16(lbl_address);
     Ok(())
 }
 

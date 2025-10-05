@@ -10,7 +10,8 @@
 ('tile-map-0 db)
 
 (def-section .tile-map-1
-    :offset 0x9C00)
+    :offset 0x9C00
+    :label-only true)
 
 (def-section .header
     :offset 0x100
@@ -19,3 +20,5 @@
 (def-section .rom0
     :offset 0x150
     :length 100)
+(section .rom0)
+('entry-point db)

@@ -4,8 +4,7 @@ mod parser;
 use crate::asm;
 use std::fs::File;
 
-pub fn assemble_file(file: &mut File) -> Result<Vec<u8>, String> {
+pub fn assemble_file(file: &mut File, options: asm::assembler::Options) -> Result<(), String> {
     let tl = asm::parser::parse_file(file)?;
-    asm::assembler::assemble(tl)?;
-    Ok(Vec::with_capacity(0))
+    asm::assembler::assemble(tl, options)
 }

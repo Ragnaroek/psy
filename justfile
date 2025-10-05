@@ -1,6 +1,6 @@
 ## running psy
-asm FILE:
-    cargo run assemble --flat {{FILE}}
+asm FILE OUT:
+    cargo run assemble --flat -o {{OUT}} {{FILE}}
 
 ## testing psy
 test:

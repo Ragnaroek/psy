@@ -13,7 +13,7 @@ impl Label {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub struct Address(pub u64);
 
 impl Address {

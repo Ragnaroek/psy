@@ -1,6 +1,8 @@
 use clap::{ArgAction, Args, Parser, Subcommand};
 use std::fs::File;
 use std::io::Read;
+use std::path::PathBuf;
+use std::str::FromStr;
 
 #[derive(Parser)]
 struct Cli {
@@ -40,6 +42,8 @@ struct Assemble {
     /// and the result is a direct binary output, not an object file that can be linked.
     #[clap(long, short, action=ArgAction::SetTrue)]
     flat: bool,
+    #[clap(long, short, default_value = "a.out")]
+    out: String,
 }
 
 #[derive(Args)]
@@ -78,9 +82,11 @@ fn assemble(arg: &Assemble) -> Result<(), String> {
     }
 
     let mut file = File::open(&arg.file).map_err(|e| e.to_string())?;
-    let out = psy::asm::assemble_file(&mut file)?;
-    // TODO write object file
-    Ok(())
+    let options = psy::asm::assembler::Options {
+        flat: arg.flat,
+        out: PathBuf::from_str(&arg.out).unwrap(),
+    };
+    psy::asm::assemble_file(&mut file, options)
 }
 
 fn disassemble_gb(arg: &DisassembleGB) -> Result<(), String> {
