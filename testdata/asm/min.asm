@@ -12,3 +12,5 @@
 
 (section .rom0)
 ('loop-forever jr 'loop-forever)
+(jr 'loop-forever)
+(jr 'loop-forever)

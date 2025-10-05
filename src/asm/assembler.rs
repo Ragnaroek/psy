@@ -113,6 +113,17 @@ fn state_to_flat(state: &mut State, out: &Path) -> Result<(), String> {
 
 fn assemble_in_state(pasm: TopLevel, state: &mut State) -> Result<(), String> {
     for form in &pasm.forms {
+        // define the label with an adresse if the form is labeled
+        if let Some(label) = &form.label {
+            let lbl = label.clone(); // TODO is this clone free possible?
+            if state.label_addresses.contains_key(&lbl) {
+                return Err(format!("duplicate label definition: '{}", lbl.name()));
+            }
+            state
+                .label_addresses
+                .insert(lbl, state.current_section_address);
+        }
+
         match &form.op {
             Symbol::Sym(sym_name) => {
                 if sym_name == "include" {
@@ -139,7 +150,7 @@ fn assemble_in_state(pasm: TopLevel, state: &mut State) -> Result<(), String> {
                 } else if sym_name == "dec" {
                     dec(state);
                 } else if sym_name == "jr" {
-                    jr(state);
+                    jr(state, form)?;
                 } else if sym_name == "nop" {
                     nop(state)?;
                 } else {
@@ -237,17 +248,6 @@ fn section(state: &mut State, form: &Form) -> Result<(), String> {
 
 fn db(state: &mut State, db: &Form) -> Result<(), String> {
     expect_in_section(state)?;
-
-    if let Some(label) = &db.label {
-        let lbl = label.clone(); // TODO is the clone free possible?
-        if state.label_addresses.contains_key(&lbl) {
-            return Err(format!("duplicate label definition: '{}", lbl.name()));
-        }
-        state
-            .label_addresses
-            .insert(lbl, state.current_section_address);
-    }
-
     if !db.exps.is_empty() {
         state
             .current_section_address
@@ -273,6 +273,7 @@ fn sub_section(state: &mut State) {
 // non-primitive forms, temporarily implemented in Rust directly
 
 fn nop(state: &mut State) -> Result<(), String> {
+    state.current_section_address.add_bytes(1);
     let sec = expect_in_w_sec(state)?;
     sec.memory.push_u8(0);
     Ok(())
@@ -284,20 +285,28 @@ fn ld(state: &mut State) {
 
 fn jp(state: &mut State, form: &Form) -> Result<(), String> {
     let lbl = expect_label_name(&form.exps[0])?;
-    let lbl_address = if let Some(address) = state.label_addresses.get(&lbl) {
-        address.0 as u16
-    } else {
-        return Err(format!("no address for label '{}", lbl.name()));
-    };
-
+    let lbl_address = expect_label_address(state, &lbl)?;
+    state.current_section_address.add_bytes(3);
     let sec = expect_in_w_sec(state)?;
     sec.memory.push_u8(0xC3);
     sec.memory.push_u16(lbl_address);
     Ok(())
 }
 
-fn jr(state: &mut State) {
-    println!("!jr");
+/// jump relative
+fn jr(state: &mut State, form: &Form) -> Result<(), String> {
+    if let Some(lbl) = is_label(&form.exps[0]) {
+        let lbl_address = expect_label_address(state, lbl)?;
+        state.current_section_address.add_bytes(2);
+        let rel_dist = (lbl_address as i32 - state.current_section_address.0 as i32) / 8;
+        // TODO check bounds of jump here
+        let sec = expect_in_w_sec(state)?;
+        sec.memory.push_u8(0x18);
+        sec.memory.push_u8(rel_dist as u8);
+        Ok(())
+    } else {
+        Err("jr currently only supports label".to_string())
+    }
 }
 
 fn inc(state: &mut State) {
@@ -315,6 +324,14 @@ static TRUE_SYM_NAME: &'static str = "true";
 
 fn sym_false() -> Symbol {
     Symbol::Sym(FALSE_SYM_NAME.to_string())
+}
+
+fn expect_label_address(state: &State, lbl: &Label) -> Result<u16, String> {
+    if let Some(address) = state.label_addresses.get(&lbl) {
+        Ok(address.0 as u16)
+    } else {
+        Err(format!("no address for label '{}", lbl.name()))
+    }
 }
 
 fn expect_in_section(state: &State) -> Result<(), String> {
@@ -416,6 +433,13 @@ fn is_keyword(exp: &SExp, name: &str) -> bool {
     match exp {
         SExp::Symbol(Symbol::Keyword(keyword_name)) => keyword_name == name,
         _ => false,
+    }
+}
+
+fn is_label(exp: &SExp) -> Option<&Label> {
+    match exp {
+        SExp::Symbol(Symbol::Label(lbl)) => Some(lbl),
+        _ => None,
     }
 }
 
