@@ -21,4 +21,7 @@ target
 #.idea/
 
 # test builds
-min.gb
+*.gb
+
+# temp collected docs
+_doc/

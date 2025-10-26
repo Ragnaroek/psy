@@ -1,4 +1,8 @@
-use crate::asm::parser::{Address, Form, Label, SExp, Symbol, TopLevel, parse_file};
+#[cfg(test)]
+#[path = "./assembler_test.rs"]
+mod assembler_test;
+
+use crate::asm::parser::{Address, Form, Label, SExp, Symbol, TopLevel, parse_from_file};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
@@ -134,6 +138,8 @@ fn assemble_in_state(pasm: TopLevel, state: &mut State) -> Result<(), String> {
                     section(state, form)?;
                 } else if sym_name == "db" {
                     db(state, form)?;
+                } else if sym_name == "ds" {
+                    ds(state, form)?;
                 } else if sym_name == "label" {
                     label(state);
                 } else if sym_name == "sub-section" {
@@ -179,7 +185,7 @@ fn include(state: &mut State, form: &Form) -> Result<(), String> {
     };
 
     let mut file = File::open(file_name).map_err(|e| e.to_string())?;
-    let tl = parse_file(&mut file)?;
+    let tl = parse_from_file(&mut file)?;
     assemble_in_state(tl, state)?;
     Ok(())
 }
@@ -262,6 +268,23 @@ fn db(state: &mut State, db: &Form) -> Result<(), String> {
     Ok(())
 }
 
+fn ds(state: &mut State, ds: &Form) -> Result<(), String> {
+    expect_in_section(state)?;
+
+    if ds.exps.is_empty() {
+        return Err("ds needs at least a len".to_string());
+    }
+
+    let len = expect_immediate(&ds.exps[0])?;
+    state.current_section_address.add_bytes(len);
+    let sec = expect_in_w_sec(state)?;
+    for _ in 0..len {
+        sec.memory.push_u8(0);
+    }
+
+    Ok(())
+}
+
 fn label(state: &mut State) {
     println!("!label");
 }
@@ -295,11 +318,21 @@ fn jp(state: &mut State, form: &Form) -> Result<(), String> {
 
 /// jump relative
 fn jr(state: &mut State, form: &Form) -> Result<(), String> {
+    if form.exps.is_empty() {
+        return Err("jr: needs at least one argument".to_string());
+    }
+
     if let Some(lbl) = is_label(&form.exps[0]) {
         let lbl_address = expect_label_address(state, lbl)?;
         state.current_section_address.add_bytes(2);
         let rel_dist = (lbl_address as i32 - state.current_section_address.0 as i32) / 8;
-        // TODO check bounds of jump here
+        if rel_dist < -128 {
+            return Err(format!("jr: max -128 jumps back, was {}", rel_dist));
+        }
+        if rel_dist > 127 {
+            return Err(format!("jr: max 127 jumps forward, was {}", rel_dist));
+        }
+
         let sec = expect_in_w_sec(state)?;
         sec.memory.push_u8(0x18);
         sec.memory.push_u8(rel_dist as u8);

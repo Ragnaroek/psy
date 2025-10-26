@@ -1,11 +1,11 @@
 use std::{fs::File, iter::Peekable, str::Chars};
 
-use crate::asm::parser::{Label, SExp, Symbol, parse, parse_file};
+use crate::asm::parser::{Label, SExp, Symbol, parse, parse_from_file};
 
 #[test]
 fn test_parse_test_file() -> Result<(), String> {
     let mut f = File::open("testdata/asm/test.asm").map_err(|e| e.to_string())?;
-    let tl = parse_file(&mut f)?;
+    let tl = parse_from_file(&mut f)?;
 
     assert_eq!(tl.forms.len(), 13);
     Ok(())

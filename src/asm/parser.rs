@@ -2,6 +2,7 @@
 #[path = "./parser_test.rs"]
 mod parser_test;
 
+use core::iter::Iterator;
 use std::{fs::File, io::Read, iter::Peekable, str::Chars};
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
@@ -57,10 +58,14 @@ S => SExp*
 SExp => (SExp) | Symbol
 Symbol => Ascii-char*
 */
-pub fn parse_file(file: &mut File) -> Result<TopLevel, String> {
+pub fn parse_from_file(file: &mut File) -> Result<TopLevel, String> {
     let mut buf = String::new();
     file.read_to_string(&mut buf).map_err(|e| e.to_string())?;
     parse(&mut buf.chars().peekable())
+}
+
+pub fn parse_from_string(str: &str) -> Result<TopLevel, String> {
+    parse(&mut str.chars().peekable())
 }
 
 fn parse(chars: &mut Peekable<Chars>) -> Result<TopLevel, String> {
