@@ -9,6 +9,10 @@ use std::{fs::File, io::Read, iter::Peekable, str::Chars};
 pub struct Label(String);
 
 impl Label {
+    pub fn from_string(str: String) -> Label {
+        Label(str)
+    }
+
     pub fn name(&self) -> &str {
         &self.0
     }

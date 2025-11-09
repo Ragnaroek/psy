@@ -49,6 +49,15 @@ struct State {
     label_addresses: HashMap<Label, Address>,
 }
 
+#[derive(Debug)]
+struct UnresolvedLabel {
+    relative_from: Address,
+    label: Label,
+    check: fn(i32) -> Result<(), String>,
+    sec_name: String,
+    patch_index: usize,
+}
+
 impl State {
     fn new() -> State {
         State {
@@ -116,6 +125,8 @@ fn state_to_flat(state: &mut State, out: &Path) -> Result<(), String> {
 }
 
 fn assemble_in_state(pasm: TopLevel, state: &mut State) -> Result<(), String> {
+    let mut unresolved_refs: Vec<UnresolvedLabel> = Vec::new();
+
     for form in &pasm.forms {
         // define the label with an adresse if the form is labeled
         if let Some(label) = &form.label {
@@ -156,7 +167,10 @@ fn assemble_in_state(pasm: TopLevel, state: &mut State) -> Result<(), String> {
                 } else if sym_name == "dec" {
                     dec(state);
                 } else if sym_name == "jr" {
-                    jr(state, form)?;
+                    let unresolved = jr(state, form)?;
+                    if let Some(unresolved) = unresolved {
+                        unresolved_refs.push(unresolved);
+                    }
                 } else if sym_name == "nop" {
                     nop(state)?;
                 } else {
@@ -165,6 +179,23 @@ fn assemble_in_state(pasm: TopLevel, state: &mut State) -> Result<(), String> {
             }
             sym => return Err(format!("illegal top-level form: {:?}", sym)),
         }
+    }
+
+    try_resolve(&unresolved_refs, state)?;
+
+    Ok(())
+}
+
+fn try_resolve(unresolved_refs: &Vec<UnresolvedLabel>, state: &mut State) -> Result<(), String> {
+    for unresolved in unresolved_refs {
+        let lbl_address = expect_label_address(state, &unresolved.label)?;
+
+        let rel_dist = (lbl_address as i32 - unresolved.relative_from.0 as i32) / 8;
+        (unresolved.check)(rel_dist)?;
+        let sec = state
+            .lookup_section_mut(&unresolved.sec_name)
+            .expect("source section not found");
+        sec.memory.mem[unresolved.patch_index] = rel_dist as u8;
     }
     Ok(())
 }
@@ -317,29 +348,50 @@ fn jp(state: &mut State, form: &Form) -> Result<(), String> {
 }
 
 /// jump relative
-fn jr(state: &mut State, form: &Form) -> Result<(), String> {
+fn jr(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String> {
     if form.exps.is_empty() {
         return Err("jr: needs at least one argument".to_string());
     }
 
     if let Some(lbl) = is_label(&form.exps[0]) {
-        let lbl_address = expect_label_address(state, lbl)?;
         state.current_section_address.add_bytes(2);
-        let rel_dist = (lbl_address as i32 - state.current_section_address.0 as i32) / 8;
-        if rel_dist < -128 {
-            return Err(format!("jr: max -128 jumps back, was {}", rel_dist));
-        }
-        if rel_dist > 127 {
-            return Err(format!("jr: max 127 jumps forward, was {}", rel_dist));
-        }
 
-        let sec = expect_in_w_sec(state)?;
-        sec.memory.push_u8(0x18);
-        sec.memory.push_u8(rel_dist as u8);
-        Ok(())
+        let may_address = state.label_addresses.get(&lbl);
+        if let Some(lbl_address) = may_address {
+            // resolve and check it immeditately
+            let rel_dist = (lbl_address.0 as i32 - state.current_section_address.0 as i32) / 8;
+            check_jr_jump(rel_dist)?;
+            let sec = expect_in_w_sec(state)?;
+            sec.memory.push_u8(0x18);
+            sec.memory.push_u8(rel_dist as u8);
+            Ok(None)
+        } else {
+            let curr_address = state.current_section_address;
+            let sec = expect_in_w_sec(state)?;
+            sec.memory.push_u8(0x18);
+            sec.memory.push_u8(0);
+
+            Ok(Some(UnresolvedLabel {
+                relative_from: curr_address,
+                label: lbl.clone(),
+                check: check_jr_jump,
+                sec_name: sec.name.clone(),
+                patch_index: sec.memory.mem_ptr - 1,
+            }))
+        }
     } else {
-        Err("jr currently only supports label".to_string())
+        Err("jr currently only supports labels".to_string())
     }
+}
+
+fn check_jr_jump(rel_dist: i32) -> Result<(), String> {
+    if rel_dist < -128 {
+        return Err(format!("jr: max -128 jumps back, was {}", rel_dist));
+    }
+    if rel_dist > 127 {
+        return Err(format!("jr: max 127 jumps forward, was {}", rel_dist));
+    }
+    Ok(())
 }
 
 fn inc(state: &mut State) {

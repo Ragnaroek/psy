@@ -1,4 +1,6 @@
-use crate::asm::assembler::{Memory, Section, State, ds, expect_label_name, jr};
+use crate::asm::assembler::{
+    Label, Memory, Section, State, UnresolvedLabel, check_jr_jump, ds, expect_label_name, jr,
+};
 use crate::asm::parser::{Address, parse_from_string};
 
 #[test]
@@ -54,31 +56,63 @@ fn test_jr_fails() -> Result<(), String> {
 fn test_jr_ok() -> Result<(), String> {
     let cases = [
         // jump to self
-        ("(jr 'lbl)", Address(0x4000), 0x18, 0xFE),
+        ("(jr 'lbl)", Some(Address(0x4000)), None, 0x18, 0xFE),
         // jump maximum backward
-        ("(jr 'lbl)", Address(0x4000 - 126 * 8), 0x18, 0x80),
+        (
+            "(jr 'lbl)",
+            Some(Address(0x4000 - 126 * 8)),
+            None,
+            0x18,
+            0x80,
+        ),
         // jump maximum forward
-        ("(jr 'lbl)", Address(0x4000 + 129 * 8), 0x18, 0x7F),
+        (
+            "(jr 'lbl)",
+            Some(Address(0x4000 + 129 * 8)),
+            None,
+            0x18,
+            0x7F,
+        ),
+        // forward jump, address not yet defined
+        (
+            "(jr 'forward)",
+            None,
+            Some(UnresolvedLabel {
+                relative_from: Address(16400), // TEST_SEC_ADDRESS +2 bytes
+                label: Label::from_string("forward".to_string()),
+                check: check_jr_jump,
+                sec_name: TEST_SEC_NAME.to_string(),
+                patch_index: 1, // address bytes start at byte 1
+            }),
+            0x18,
+            0x00,
+        ),
     ];
 
-    for (exp, lbl_address, inst1, inst2) in cases {
+    for (exp, may_lbl_address, expect_unresolved_info, inst1, inst2) in cases {
         let mut state = test_state();
         let tl = parse_from_string(exp)?;
         let lbl = expect_label_name(&tl.forms[0].exps[0])?;
-        state.label_addresses.insert(lbl, lbl_address);
+        let mut expect_address = 0;
+        if let Some(lbl_address) = may_lbl_address {
+            state.label_addresses.insert(lbl, lbl_address);
+            expect_address = lbl_address.0 as i32;
+        }
 
-        jr(&mut state, &tl.forms[0])?;
+        let got_unresolved_info = jr(&mut state, &tl.forms[0])?;
+
+        assert_eq_unresolved_label(got_unresolved_info, expect_unresolved_info);
 
         let sec = state.lookup_section(&TEST_SEC_NAME).expect("test sec");
         assert_eq!(
             sec.memory.mem[0], inst1,
             "address={:?}, inst1 was {:x}",
-            lbl_address, sec.memory.mem[0]
+            expect_address, sec.memory.mem[0]
         );
         assert_eq!(
             sec.memory.mem[1], inst2,
             "address={:?}, inst2 was {:x}",
-            lbl_address, sec.memory.mem[1]
+            expect_address, sec.memory.mem[1]
         );
     }
 
@@ -91,6 +125,21 @@ fn test_jr_ok() -> Result<(), String> {
 
 static TEST_SEC_NAME: &'static str = "test-section";
 static TEST_SEC_ADDR: Address = Address(0x4000);
+
+fn assert_eq_unresolved_label(got: Option<UnresolvedLabel>, expect: Option<UnresolvedLabel>) {
+    assert!(got.is_some() == expect.is_some());
+
+    if let Some(expect_unresolved) = expect {
+        let got_unresolved = got.expect("got is some");
+        assert_eq!(
+            got_unresolved.relative_from,
+            expect_unresolved.relative_from
+        );
+        assert_eq!(got_unresolved.label, expect_unresolved.label);
+        assert_eq!(got_unresolved.sec_name, expect_unresolved.sec_name);
+        assert_eq!(got_unresolved.patch_index, expect_unresolved.patch_index);
+    }
+}
 
 fn test_state() -> State {
     let mut state = State::new();
