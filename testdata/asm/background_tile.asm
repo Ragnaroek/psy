@@ -3,7 +3,7 @@
 (include :std "gb/dma")
 
 (section .header)
-(jp 'entry-point)
+(jp 'rom0)
 
 (section .rom0)
 (ld %hl 'tile-data)
@@ -15,7 +15,7 @@
 (inc %hl)
 (inc %de)
 (dec %b)
-(jr #nz 'copy-loop)
+;TODO (jr #nz 'copy-loop)
 
 (ld %hl 'tile-map-0)
 (ld (%hl) 1)
@@ -27,11 +27,11 @@
 (db 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)
 
 (label 'block)
-(db 0b00000000 0b11111111)
-(db 0b01000010 0b10000001)
-(db 0b00000000 0b11111111)
-(db 0b01000010 0b10000001)
-(db 0b00000000 0b11111111)
-(db 0b01000010 0b10000001)
-(db 0b00000000 0b11111111)
-(db 0b11111111 0b11111111)
+;TODO (db 0b00000000 0b11111111)
+;TODO (db 0b01000010 0b10000001)
+;TODO (db 0b00000000 0b11111111)
+;TODO (db 0b01000010 0b10000001)
+;TODO (db 0b00000000 0b11111111)
+;TODO (db 0b01000010 0b10000001)
+;TODO (db 0b00000000 0b11111111)
+;TODO (db 0 b11111111 0b11111111)
