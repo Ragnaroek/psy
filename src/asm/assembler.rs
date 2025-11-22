@@ -348,6 +348,7 @@ fn sub_section(state: &mut State) -> Result<Option<UnresolvedLabel>, String> {
 
 const JP: u8 = 0xC3;
 const JR: u8 = 0x18;
+const JR_NZ: u8 = 0x20;
 
 fn nop(state: &mut State) -> Result<Option<UnresolvedLabel>, String> {
     state.current_section_address.add_bytes(1);
@@ -406,7 +407,13 @@ fn jr(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String>
         return Err("jr: needs at least one argument".to_string());
     }
 
-    if let Some(lbl) = is_label(&form.exps[0]) {
+    let (flag, lbl_ix) = if let Some(flg) = is_flag(&form.exps[0]) {
+        (Some(flg), 1)
+    } else {
+        (None, 0)
+    };
+
+    if let Some(lbl) = is_label(&form.exps[lbl_ix]) {
         state.current_section_address.add_bytes(2);
 
         let may_address = state.label_addresses.get(&lbl);
@@ -415,15 +422,12 @@ fn jr(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String>
             let rel_dist = (lbl_address.0 as i32 - state.current_section_address.0 as i32) / 8;
             check_jr_jump(rel_dist)?;
             let sec = expect_in_w_sec(state)?;
-            sec.memory.push_u8(JR);
-            sec.memory.push_u8(rel_dist as u8);
+            write_jr_instr(sec, flag, rel_dist as u8)?;
             Ok(None)
         } else {
             let curr_address = state.current_section_address;
             let sec = expect_in_w_sec(state)?;
-            sec.memory.push_u8(JR);
-            sec.memory.push_u8(0);
-
+            write_jr_instr(sec, flag, 0)?;
             Ok(Some(UnresolvedLabel {
                 relative_from: Some(curr_address),
                 label: lbl.clone(),
@@ -434,8 +438,24 @@ fn jr(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String>
             }))
         }
     } else {
-        Err("jr currently only supports labels".to_string())
+        Err(format!(
+            "jr currently only supports labels, was: {:?}",
+            &form.exps[0]
+        ))
     }
+}
+
+fn write_jr_instr(sec: &mut Section, flag: Option<&String>, rel_dist: u8) -> Result<(), String> {
+    match flag {
+        None => sec.memory.push_u8(JR),
+        Some(flag) => match flag.as_str() {
+            "nz" => sec.memory.push_u8(JR_NZ),
+            _ => return Err(format!("jr: unknown flag '{}'", flag)),
+        },
+    }
+
+    sec.memory.push_u8(rel_dist);
+    Ok(())
 }
 
 fn check_jr_jump(rel_dist: i32) -> Result<(), String> {
@@ -580,6 +600,13 @@ fn is_keyword(exp: &SExp, name: &str) -> bool {
 fn is_label(exp: &SExp) -> Option<&Label> {
     match exp {
         SExp::Symbol(Symbol::Label(lbl)) => Some(lbl),
+        _ => None,
+    }
+}
+
+fn is_flag(exp: &SExp) -> Option<&String> {
+    match exp {
+        SExp::Symbol(Symbol::Flag(flg)) => Some(flg),
         _ => None,
     }
 }

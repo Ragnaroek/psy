@@ -42,6 +42,7 @@ pub enum Symbol {
     Section(String), // . prefix
     Reg(String),     // % prefix
     Label(Label),    // ' prefix
+    Flag(String),    // # prefix
     Sym(String),     //a-zA-Z only
 }
 
@@ -144,7 +145,12 @@ fn parse_symbol(chars: &mut Peekable<Chars>) -> Result<Symbol, String> {
         None => return Err("unexpected end of symbol".to_string()),
         Some(ch) => ch,
     };
-    if first_char != ':' && first_char != '.' && first_char != '\'' && first_char != '%' {
+    if first_char != ':'
+        && first_char != '.'
+        && first_char != '\''
+        && first_char != '%'
+        && first_char != '#'
+    {
         sym.push(first_char);
     }
 
@@ -174,6 +180,7 @@ fn parse_symbol(chars: &mut Peekable<Chars>) -> Result<Symbol, String> {
         '.' => Ok(Symbol::Section(sym)),
         '\'' => Ok(Symbol::Label(Label(sym))),
         '%' => Ok(Symbol::Reg(sym)),
+        '#' => Ok(Symbol::Flag(sym)),
         _ => Ok(Symbol::Sym(sym)),
     }
 }

@@ -1,6 +1,6 @@
 use crate::asm::assembler::{
-    JP, JR, Label, Memory, Section, State, UnresolvedLabel, check_jp_jump, check_jr_jump, ds,
-    expect_label_name, jp, jr,
+    JP, JR, JR_NZ, Label, Memory, Section, State, UnresolvedLabel, check_jp_jump, check_jr_jump,
+    ds, expect_label_name, jp, jr,
 };
 use crate::asm::parser::{Address, parse_from_string};
 
@@ -35,6 +35,12 @@ fn test_jr_fails() -> Result<(), String> {
             Address(0x4000 + 130 * 8),
             "jr: max 127 jumps forward, was 128",
         ),
+        (
+            // unknown flag
+            "(jr #tz 'lbl)",
+            Address(0x4000 + 2),
+            "jr: unknown flag 'tz'",
+        ),
     ];
 
     for (exp, lbl_address, err) in cases {
@@ -42,7 +48,7 @@ fn test_jr_fails() -> Result<(), String> {
         let tl = parse_from_string(exp)?;
 
         if !tl.forms[0].exps.is_empty() {
-            let lbl = expect_label_name(&tl.forms[0].exps[0])?;
+            let lbl = expect_label_name(&tl.forms[0].exps[tl.forms[0].exps.len() - 1])?;
             state.label_addresses.insert(lbl, lbl_address);
         }
 
@@ -62,6 +68,14 @@ fn test_jr_ok() -> Result<(), String> {
         ("(jr 'lbl)", Some(Address(0x4000 - 126 * 8)), None, JR, 0x80),
         // jump maximum forward
         ("(jr 'lbl)", Some(Address(0x4000 + 129 * 8)), None, JR, 0x7F),
+        // jump nz
+        (
+            "(jr #nz 'lbl)",
+            Some(Address(0x4000 + 129 * 8)),
+            None,
+            JR_NZ,
+            0x7F,
+        ),
         // forward jump, address not yet defined
         (
             "(jr 'forward)",
@@ -82,7 +96,7 @@ fn test_jr_ok() -> Result<(), String> {
     for (exp, may_lbl_address, expect_unresolved_info, inst1, inst2) in cases {
         let mut state = test_state();
         let tl = parse_from_string(exp)?;
-        let lbl = expect_label_name(&tl.forms[0].exps[0])?;
+        let lbl = expect_label_name(&tl.forms[0].exps[tl.forms[0].exps.len() - 1])?;
         let mut expect_address = 0;
         if let Some(lbl_address) = may_lbl_address {
             state.label_addresses.insert(lbl, lbl_address);

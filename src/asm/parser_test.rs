@@ -50,6 +50,24 @@ fn test_parse_ld_deref_immediate() -> Result<(), String> {
     Ok(())
 }
 
+#[test]
+fn test_parse_jr_conditional_nz() -> Result<(), String> {
+    let tl = parse(&mut chars("(jr #nz 'lbl)"))?;
+    assert_eq!(tl.forms.len(), 1);
+    assert_eq!(tl.forms[0].label, None);
+    assert_eq!(tl.forms[0].op, Symbol::Sym("jr".to_string()));
+    assert_eq!(tl.forms[0].exps.len(), 2);
+    assert_eq!(
+        tl.forms[0].exps[0],
+        SExp::Symbol(Symbol::Flag("nz".to_string()))
+    );
+    assert_eq!(
+        tl.forms[0].exps[1],
+        SExp::Symbol(Symbol::Label(Label("lbl".to_string())))
+    );
+    Ok(())
+}
+
 // helper
 
 fn chars(str: &'static str) -> Peekable<Chars<'static>> {

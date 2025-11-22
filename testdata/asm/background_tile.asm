@@ -15,7 +15,7 @@
 (inc %hl)
 (inc %de)
 (dec %b)
-;TODO (jr #nz 'copy-loop)
+(jr #nz 'copy-loop)
 
 (ld %hl 'tile-map-0)
 (ld (%hl) 1)
