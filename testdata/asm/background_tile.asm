@@ -10,21 +10,22 @@
 (ld %de 'vram)
 (ld %b 32)
 
-('copy-loop ld %a (%hl))
-(ld (%de) %a)
+; TODO ('copy-loop ld %a (%hl)) ; instruction below is just a placeholder for the label
+('copy-loop jr 'copy-loop)
+; TODO (ld (%de) %a)
 (inc %hl)
 (inc %de)
 (dec %b)
 (jr #nz 'copy-loop)
 
 (ld %hl 'tile-map-0)
-(ld (%hl) 1)
+; TODO (ld (%hl) 1)
 (inc %hl)
 
 ('loop-forever jr 'loop-forever)
 
-(label 'tile-data)
-(db 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)
+;TODO (label 'tile-data)
+('tile-data db 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)
 
 (label 'block)
 ;TODO (db 0b00000000 0b11111111)

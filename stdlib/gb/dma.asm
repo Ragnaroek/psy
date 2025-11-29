@@ -30,3 +30,10 @@
     :length 0x4000) ; 16 KiB
 (section .rom1)
 ('rom1 db)
+
+(def-section .vram
+    :offset 0x8000
+    :length 0x1FFF
+    :label-only true)
+(section .vram)
+('vram db)

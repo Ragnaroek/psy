@@ -2,6 +2,7 @@
 #[path = "./assembler_test.rs"]
 mod assembler_test;
 
+use crate::arch::sm83::{INSTR_LD_B_IMMEDIATE, INSTR_LD_DE_LABEL, INSTR_LD_HL_LABEL, REG_HL};
 use crate::asm::parser::{Address, Form, Label, SExp, Symbol, TopLevel, parse_from_file};
 use std::collections::HashMap;
 use std::fs::File;
@@ -160,7 +161,7 @@ fn assemble_in_state(pasm: TopLevel, state: &mut State) -> Result<(), String> {
                 // to convert this to macros that emits bytes with low-level primitives
                 } else if sym_name == "ld" {
                     //machine specific, should not be handled here
-                    ld(state)?
+                    ld(state, form)?
                 } else if sym_name == "jp" {
                     jp(state, form)?
                 } else if sym_name == "inc" {
@@ -357,9 +358,53 @@ fn nop(state: &mut State) -> Result<Option<UnresolvedLabel>, String> {
     Ok(None)
 }
 
-fn ld(state: &mut State) -> Result<Option<UnresolvedLabel>, String> {
-    println!("!ld");
-    Ok(None)
+fn ld(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String> {
+    if form.exps.len() < 2 {
+        return Err("ld: needs at least two arguments".to_string());
+    }
+    match (&form.exps[0], &form.exps[1]) {
+        (SExp::Symbol(Symbol::Reg(reg)), SExp::Symbol(Symbol::Label(lbl))) => {
+            let op = match reg.as_str() {
+                REG_HL => INSTR_LD_HL_LABEL.op_code,
+                REG_DE => INSTR_LD_DE_LABEL.op_code,
+                _ => return Err(format!("ld: unknown register: {}", reg)),
+            };
+
+            let may_address = state.label_addresses.get(&lbl);
+            if let Some(lbl_address) = may_address {
+                let from_address = lbl_address.0 as u16;
+                let sec = expect_in_w_sec(state)?;
+                sec.memory.push_u8(op);
+                sec.memory.push_u16(from_address);
+                Ok(None)
+            } else {
+                let sec = expect_in_w_sec(state)?;
+                sec.memory.push_u8(op);
+                sec.memory.push_u16(0);
+                Ok(Some(UnresolvedLabel {
+                    relative_from: None,
+                    label: lbl.clone(),
+                    check: check_16_bit_address_range,
+                    sec_name: sec.name.clone(),
+                    patch_index: sec.memory.mem_ptr - 2,
+                    patch_width: 2,
+                }))
+            }
+        }
+        (SExp::Symbol(Symbol::Reg(reg)), SExp::Immediate(im_value)) => {
+            let op = match reg.as_str() {
+                REG_B => INSTR_LD_B_IMMEDIATE.op_code,
+                _ => return Err(format!("ld: unknown register: {}", reg)),
+            };
+
+            // TODO check range of immediate value!
+            let sec = expect_in_w_sec(state)?;
+            sec.memory.push_u8(op);
+            sec.memory.push_u8(*im_value as u8);
+            Ok(None)
+        }
+        (a1, a2) => return Err(format!("ld: illegal parameters: {:?} {:?}", a1, a2)),
+    }
 }
 
 fn jp(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String> {
@@ -368,11 +413,11 @@ fn jp(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String>
     let lbl = expect_label_name(&form.exps[0])?;
     let may_address = state.label_addresses.get(&lbl);
     if let Some(lbl_address) = may_address {
-        let dist = lbl_address.0 as i32;
-        check_jp_jump(dist)?;
+        let to_address = lbl_address.0 as i32;
+        check_16_bit_address_range(to_address)?;
         let sec = expect_in_w_sec(state)?;
         sec.memory.push_u8(JP);
-        sec.memory.push_u16(dist as u16);
+        sec.memory.push_u16(to_address as u16);
 
         Ok(None)
     } else {
@@ -383,7 +428,7 @@ fn jp(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String>
         Ok(Some(UnresolvedLabel {
             relative_from: None,
             label: lbl.clone(),
-            check: check_jp_jump,
+            check: check_16_bit_address_range,
             sec_name: sec.name.clone(),
             patch_index: sec.memory.mem_ptr - 2,
             patch_width: 2,
@@ -391,7 +436,7 @@ fn jp(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String>
     }
 }
 
-fn check_jp_jump(dist: i32) -> Result<(), String> {
+fn check_16_bit_address_range(dist: i32) -> Result<(), String> {
     if dist < u16::MIN as i32 {
         return Err(format!("jp: max {} jumps back, was {}", u16::MIN, dist));
     }

@@ -1,7 +1,9 @@
+use crate::arch::sm83::{INSTR_LD_B_IMMEDIATE, INSTR_LD_DE_LABEL, INSTR_LD_HL_LABEL};
 use crate::asm::assembler::{
-    JP, JR, JR_NZ, Label, Memory, Section, State, UnresolvedLabel, check_jp_jump, check_jr_jump,
-    ds, expect_label_name, jp, jr,
+    JP, JR, JR_NZ, Label, Memory, Section, State, UnresolvedLabel, check_16_bit_address_range,
+    check_jr_jump, ds, expect_label_name, jp, jr, ld,
 };
+
 use crate::asm::parser::{Address, parse_from_string};
 
 #[test]
@@ -135,7 +137,7 @@ fn test_jp_ok() -> Result<(), String> {
             Some(UnresolvedLabel {
                 relative_from: None,
                 label: Label::from_string("forward".to_string()),
-                check: check_jp_jump,
+                check: check_16_bit_address_range,
                 sec_name: TEST_SEC_NAME.to_string(),
                 patch_index: 1, // address bytes start at byte 1
                 patch_width: 2,
@@ -180,6 +182,107 @@ fn test_jp_ok() -> Result<(), String> {
     Ok(())
 }
 
+#[test]
+fn test_ld_fails() -> Result<(), String> {
+    let cases = [("(ld)", Address(0), "ld: needs at least two arguments")];
+
+    for (exp, lbl_address, err) in cases {
+        let mut state = test_state();
+        let tl = parse_from_string(exp)?;
+
+        if !tl.forms[0].exps.is_empty() {
+            let lbl = expect_label_name(&tl.forms[0].exps[tl.forms[0].exps.len() - 1])?;
+            state.label_addresses.insert(lbl, lbl_address);
+        }
+
+        let r = ld(&mut state, &tl.forms[0]);
+
+        assert_eq!(r.unwrap_err(), err);
+    }
+    Ok(())
+}
+
+#[test]
+fn test_ld_ok() -> Result<(), String> {
+    let cases = [
+        // load mem hl to reg
+        (
+            "(ld %hl 'lbl)",
+            Some(Address(0x4000)),
+            None,
+            INSTR_LD_HL_LABEL.op_code,
+            0x00,
+            0x40,
+        ),
+        // load hl mem to reg forward
+        (
+            "(ld %hl 'forward)",
+            None,
+            Some(UnresolvedLabel {
+                relative_from: None,
+                label: Label::from_string("forward".to_string()),
+                check: check_16_bit_address_range,
+                sec_name: TEST_SEC_NAME.to_string(),
+                patch_index: 1,
+                patch_width: 2,
+            }),
+            INSTR_LD_HL_LABEL.op_code,
+            0x00,
+            0x00,
+        ),
+        (
+            "(ld %de 'lbl)",
+            Some(Address(0x5001)),
+            None,
+            INSTR_LD_DE_LABEL.op_code,
+            0x01,
+            0x50,
+        ),
+        // load immediate to reg
+        (
+            "(ld %de 42)",
+            None,
+            None,
+            INSTR_LD_B_IMMEDIATE.op_code,
+            0x2A,
+            0x00,
+        ),
+    ];
+
+    for (exp, may_lbl_address, expect_unresolved_info, inst1, inst2, inst3) in cases {
+        let mut state = test_state();
+        let tl = parse_from_string(exp)?;
+
+        let mut expect_address = 0;
+        if let Some(lbl_address) = may_lbl_address {
+            let lbl = expect_label_name(&tl.forms[0].exps[tl.forms[0].exps.len() - 1])?;
+            state.label_addresses.insert(lbl, lbl_address);
+            expect_address = lbl_address.0 as i32;
+        }
+
+        let got_unresolved_info = ld(&mut state, &tl.forms[0])?;
+
+        assert_eq_unresolved_label(got_unresolved_info, expect_unresolved_info);
+
+        let sec = state.lookup_section(&TEST_SEC_NAME).expect("test sec");
+        assert_eq!(
+            sec.memory.mem[0], inst1,
+            "address={:?}, inst1 was {:x}",
+            expect_address, sec.memory.mem[0]
+        );
+        assert_eq!(
+            sec.memory.mem[1], inst2,
+            "address={:?}, inst2 was {:x}",
+            expect_address, sec.memory.mem[1]
+        );
+        assert_eq!(
+            sec.memory.mem[2], inst3,
+            "address={:?}, inst3 was {:x}",
+            expect_address, sec.memory.mem[2]
+        );
+    }
+    Ok(())
+}
 // helper
 
 static TEST_SEC_NAME: &'static str = "test-section";

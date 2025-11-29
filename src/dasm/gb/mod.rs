@@ -9,7 +9,7 @@ pub fn disassemble(data: &[u8]) -> Result<Vec<String>, String> {
         let mut str = String::new();
 
         str.push_str(&format!("({:?}", instr.mnemonic));
-        for arg in &instr.immediate_args {
+        for arg in instr.immediate_args {
             str.push(' ');
             str.push_str(arg);
         }
