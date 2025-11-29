@@ -7,6 +7,7 @@ pub struct Sm83Instr {
 
 pub const REG_HL: &str = "hl";
 pub const REG_DE: &str = "de";
+pub const REG_A: &str = "a";
 pub const REG_B: &str = "b";
 
 pub static INSTR_NOP: Sm83Instr = Sm83Instr {
@@ -28,20 +29,32 @@ pub static INSTR_RST: Sm83Instr = Sm83Instr {
     stream_args: 0,
 };
 pub static INSTR_LD_HL_LABEL: Sm83Instr = Sm83Instr {
-    mnemonic: "LD HL",
+    mnemonic: "LD %hl",
     op_code: 0x21,
     immediate_args: &[],
     stream_args: 2,
 };
 pub static INSTR_LD_DE_LABEL: Sm83Instr = Sm83Instr {
-    mnemonic: "LD DE",
+    mnemonic: "LD %de",
     op_code: 0x11,
     immediate_args: &[],
     stream_args: 2,
 };
 pub static INSTR_LD_B_IMMEDIATE: Sm83Instr = Sm83Instr {
-    mnemonic: "LD B",
+    mnemonic: "LD %b",
     op_code: 0x06,
+    immediate_args: &[],
+    stream_args: 1,
+};
+pub static INSTR_LD_HL_DEREF_IMMEDIATE: Sm83Instr = Sm83Instr {
+    mnemonic: "LD (%hl)",
+    op_code: 0x36,
+    immediate_args: &[],
+    stream_args: 1,
+};
+pub static INSTR_LD_DE_DEREF_FROM_A: Sm83Instr = Sm83Instr {
+    mnemonic: "LD (%hl) %a",
+    op_code: 0x12,
     immediate_args: &[],
     stream_args: 1,
 };

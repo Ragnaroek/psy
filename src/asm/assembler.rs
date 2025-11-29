@@ -2,7 +2,10 @@
 #[path = "./assembler_test.rs"]
 mod assembler_test;
 
-use crate::arch::sm83::{INSTR_LD_B_IMMEDIATE, INSTR_LD_DE_LABEL, INSTR_LD_HL_LABEL, REG_HL};
+use crate::arch::sm83::{
+    INSTR_LD_B_IMMEDIATE, INSTR_LD_DE_DEREF_FROM_A, INSTR_LD_DE_LABEL, INSTR_LD_HL_DEREF_IMMEDIATE,
+    INSTR_LD_HL_LABEL, REG_DE, REG_HL,
+};
 use crate::asm::parser::{Address, Form, Label, SExp, Symbol, TopLevel, parse_from_file};
 use std::collections::HashMap;
 use std::fs::File;
@@ -401,6 +404,38 @@ fn ld(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String>
             let sec = expect_in_w_sec(state)?;
             sec.memory.push_u8(op);
             sec.memory.push_u8(*im_value as u8);
+            Ok(None)
+        }
+        (SExp::Form(form), SExp::Immediate(im_value)) => {
+            let op = match &form.op {
+                Symbol::Reg(reg) => match reg.as_str() {
+                    REG_HL => INSTR_LD_HL_DEREF_IMMEDIATE.op_code,
+                    _ => return Err(format!("ld: unknown register: {}", reg)),
+                },
+                illegal => return Err(format!("ld: illegal deref: {:?}", illegal)),
+            };
+
+            // TODO check range of immediate value!
+            let sec = expect_in_w_sec(state)?;
+            sec.memory.push_u8(op);
+            sec.memory.push_u8(*im_value as u8);
+
+            Ok(None)
+        }
+        (SExp::Form(form), SExp::Symbol(Symbol::Reg(src_reg))) => {
+            let dst_reg = match &form.op {
+                Symbol::Reg(reg) => reg,
+                illegal => return Err(format!("ld: illegal deref: {:?}", illegal)),
+            };
+
+            let op = match (dst_reg.as_str(), src_reg.as_str()) {
+                (REG_DE, REG_A) => INSTR_LD_DE_DEREF_FROM_A.op_code,
+                illegal => return Err(format!("ld: illegal deref from reg: {:?}", illegal)),
+            };
+
+            let sec = expect_in_w_sec(state)?;
+            sec.memory.push_u8(op);
+
             Ok(None)
         }
         (a1, a2) => return Err(format!("ld: illegal parameters: {:?} {:?}", a1, a2)),

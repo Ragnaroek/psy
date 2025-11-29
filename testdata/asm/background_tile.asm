@@ -12,19 +12,19 @@
 
 ; TODO ('copy-loop ld %a (%hl)) ; instruction below is just a placeholder for the label
 ('copy-loop jr 'copy-loop)
-; TODO (ld (%de) %a)
+(ld (%de) %a)
 (inc %hl)
 (inc %de)
 (dec %b)
 (jr #nz 'copy-loop)
 
 (ld %hl 'tile-map-0)
-; TODO (ld (%hl) 1)
+(ld (%hl) 1)
 (inc %hl)
 
 ('loop-forever jr 'loop-forever)
 
-;TODO (label 'tile-data)
+(label 'tile-data)
 ('tile-data db 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)
 
 (label 'block)

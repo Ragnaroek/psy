@@ -1,4 +1,7 @@
-use crate::arch::sm83::{INSTR_LD_B_IMMEDIATE, INSTR_LD_DE_LABEL, INSTR_LD_HL_LABEL};
+use crate::arch::sm83::{
+    INSTR_LD_B_IMMEDIATE, INSTR_LD_DE_DEREF_FROM_A, INSTR_LD_DE_LABEL, INSTR_LD_HL_DEREF_IMMEDIATE,
+    INSTR_LD_HL_LABEL,
+};
 use crate::asm::assembler::{
     JP, JR, JR_NZ, Label, Memory, Section, State, UnresolvedLabel, check_16_bit_address_range,
     check_jr_jump, ds, expect_label_name, jp, jr, ld,
@@ -245,6 +248,23 @@ fn test_ld_ok() -> Result<(), String> {
             None,
             INSTR_LD_B_IMMEDIATE.op_code,
             0x2A,
+            0x00,
+        ),
+        // load deref immediate
+        (
+            "(ld (%hl) 42)",
+            None,
+            None,
+            INSTR_LD_HL_DEREF_IMMEDIATE.op_code,
+            0x2A,
+            0x00,
+        ),
+        (
+            "(ld (%de) %a)",
+            None,
+            None,
+            INSTR_LD_DE_DEREF_FROM_A.op_code,
+            0x00,
             0x00,
         ),
     ];
