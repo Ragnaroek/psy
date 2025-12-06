@@ -28,33 +28,40 @@ pub static INSTR_RST: Sm83Instr = Sm83Instr {
     immediate_args: &["0x38"],
     stream_args: 0,
 };
-pub static INSTR_LD_HL_LABEL: Sm83Instr = Sm83Instr {
+pub static INSTR_LD_TO_HL_FROM_LABEL: Sm83Instr = Sm83Instr {
     mnemonic: "LD %hl",
     op_code: 0x21,
     immediate_args: &[],
     stream_args: 2,
 };
-pub static INSTR_LD_DE_LABEL: Sm83Instr = Sm83Instr {
+pub static INSTR_LD_TO_DE_FROM_LABEL: Sm83Instr = Sm83Instr {
     mnemonic: "LD %de",
     op_code: 0x11,
     immediate_args: &[],
     stream_args: 2,
 };
-pub static INSTR_LD_B_IMMEDIATE: Sm83Instr = Sm83Instr {
+pub static INSTR_LD_TO_B_FROM_IMMEDIATE: Sm83Instr = Sm83Instr {
     mnemonic: "LD %b",
     op_code: 0x06,
     immediate_args: &[],
     stream_args: 1,
 };
-pub static INSTR_LD_HL_DEREF_IMMEDIATE: Sm83Instr = Sm83Instr {
+pub static INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE: Sm83Instr = Sm83Instr {
     mnemonic: "LD (%hl)",
     op_code: 0x36,
     immediate_args: &[],
     stream_args: 1,
 };
-pub static INSTR_LD_DE_DEREF_FROM_A: Sm83Instr = Sm83Instr {
-    mnemonic: "LD (%hl) %a",
+pub static INSTR_LD_TO_DEREF_DE_FROM_A: Sm83Instr = Sm83Instr {
+    mnemonic: "LD (%de) %a",
     op_code: 0x12,
+    immediate_args: &[],
+    stream_args: 1,
+};
+
+pub static INSTR_LD_TO_A_FROM_DEREF_HL: Sm83Instr = Sm83Instr {
+    mnemonic: "LD %a (%hl)",
+    op_code: 0x7E,
     immediate_args: &[],
     stream_args: 1,
 };
@@ -63,9 +70,11 @@ pub static INSTRUCTIONS: &[&Sm83Instr] = &[
     &INSTR_NOP,
     &INSTR_JP,
     &INSTR_RST,
-    &INSTR_LD_HL_LABEL,
-    &INSTR_LD_DE_LABEL,
-    &INSTR_LD_B_IMMEDIATE,
+    &INSTR_LD_TO_HL_FROM_LABEL,
+    &INSTR_LD_TO_B_FROM_IMMEDIATE,
+    &INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE,
+    &INSTR_LD_TO_DEREF_DE_FROM_A,
+    &INSTR_LD_TO_A_FROM_DEREF_HL,
 ];
 
 pub fn decode(op: u8) -> Result<&'static Sm83Instr, String> {

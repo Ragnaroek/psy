@@ -10,8 +10,7 @@
 (ld %de 'vram)
 (ld %b 32)
 
-; TODO ('copy-loop ld %a (%hl)) ; instruction below is just a placeholder for the label
-('copy-loop jr 'copy-loop)
+('copy-loop ld %a (%hl))
 (ld (%de) %a)
 (inc %hl)
 (inc %de)

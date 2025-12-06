@@ -1,6 +1,6 @@
 use crate::arch::sm83::{
-    INSTR_LD_B_IMMEDIATE, INSTR_LD_DE_DEREF_FROM_A, INSTR_LD_DE_LABEL, INSTR_LD_HL_DEREF_IMMEDIATE,
-    INSTR_LD_HL_LABEL,
+    INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_DE_FROM_LABEL, INSTR_LD_TO_DEREF_DE_FROM_A,
+    INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE, INSTR_LD_TO_HL_FROM_LABEL,
 };
 use crate::asm::assembler::{
     JP, JR, JR_NZ, Label, Memory, Section, State, UnresolvedLabel, check_16_bit_address_range,
@@ -213,7 +213,7 @@ fn test_ld_ok() -> Result<(), String> {
             "(ld %hl 'lbl)",
             Some(Address(0x4000)),
             None,
-            INSTR_LD_HL_LABEL.op_code,
+            INSTR_LD_TO_HL_FROM_LABEL.op_code,
             0x00,
             0x40,
         ),
@@ -229,7 +229,7 @@ fn test_ld_ok() -> Result<(), String> {
                 patch_index: 1,
                 patch_width: 2,
             }),
-            INSTR_LD_HL_LABEL.op_code,
+            INSTR_LD_TO_HL_FROM_LABEL.op_code,
             0x00,
             0x00,
         ),
@@ -237,16 +237,16 @@ fn test_ld_ok() -> Result<(), String> {
             "(ld %de 'lbl)",
             Some(Address(0x5001)),
             None,
-            INSTR_LD_DE_LABEL.op_code,
+            INSTR_LD_TO_DE_FROM_LABEL.op_code,
             0x01,
             0x50,
         ),
         // load immediate to reg
         (
-            "(ld %de 42)",
+            "(ld %b 42)",
             None,
             None,
-            INSTR_LD_B_IMMEDIATE.op_code,
+            INSTR_LD_TO_B_FROM_IMMEDIATE.op_code,
             0x2A,
             0x00,
         ),
@@ -255,7 +255,7 @@ fn test_ld_ok() -> Result<(), String> {
             "(ld (%hl) 42)",
             None,
             None,
-            INSTR_LD_HL_DEREF_IMMEDIATE.op_code,
+            INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE.op_code,
             0x2A,
             0x00,
         ),
@@ -263,7 +263,7 @@ fn test_ld_ok() -> Result<(), String> {
             "(ld (%de) %a)",
             None,
             None,
-            INSTR_LD_DE_DEREF_FROM_A.op_code,
+            INSTR_LD_TO_DEREF_DE_FROM_A.op_code,
             0x00,
             0x00,
         ),
@@ -287,18 +287,18 @@ fn test_ld_ok() -> Result<(), String> {
         let sec = state.lookup_section(&TEST_SEC_NAME).expect("test sec");
         assert_eq!(
             sec.memory.mem[0], inst1,
-            "address={:?}, inst1 was {:x}",
-            expect_address, sec.memory.mem[0]
+            "expression={:?}, address={:?}, inst1 was {:x}",
+            exp, expect_address, sec.memory.mem[0]
         );
         assert_eq!(
             sec.memory.mem[1], inst2,
-            "address={:?}, inst2 was {:x}",
-            expect_address, sec.memory.mem[1]
+            "expression={:?}, address={:?}, inst2 was {:x}",
+            exp, expect_address, sec.memory.mem[1]
         );
         assert_eq!(
             sec.memory.mem[2], inst3,
-            "address={:?}, inst3 was {:x}",
-            expect_address, sec.memory.mem[2]
+            "expression={:?}, address={:?}, inst3 was {:x}",
+            exp, expect_address, sec.memory.mem[2]
         );
     }
     Ok(())

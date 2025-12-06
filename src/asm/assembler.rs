@@ -3,8 +3,8 @@
 mod assembler_test;
 
 use crate::arch::sm83::{
-    INSTR_LD_B_IMMEDIATE, INSTR_LD_DE_DEREF_FROM_A, INSTR_LD_DE_LABEL, INSTR_LD_HL_DEREF_IMMEDIATE,
-    INSTR_LD_HL_LABEL, REG_DE, REG_HL,
+    self, INSTR_LD_TO_A_FROM_DEREF_HL, INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_DE_FROM_LABEL,
+    INSTR_LD_TO_DEREF_DE_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE, INSTR_LD_TO_HL_FROM_LABEL,
 };
 use crate::asm::parser::{Address, Form, Label, SExp, Symbol, TopLevel, parse_from_file};
 use std::collections::HashMap;
@@ -368,9 +368,9 @@ fn ld(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String>
     match (&form.exps[0], &form.exps[1]) {
         (SExp::Symbol(Symbol::Reg(reg)), SExp::Symbol(Symbol::Label(lbl))) => {
             let op = match reg.as_str() {
-                REG_HL => INSTR_LD_HL_LABEL.op_code,
-                REG_DE => INSTR_LD_DE_LABEL.op_code,
-                _ => return Err(format!("ld: unknown register: {}", reg)),
+                sm83::REG_HL => INSTR_LD_TO_HL_FROM_LABEL.op_code,
+                sm83::REG_DE => INSTR_LD_TO_DE_FROM_LABEL.op_code,
+                _ => return Err(format!("ld: unknown source register: {}", reg)),
             };
 
             let may_address = state.label_addresses.get(&lbl);
@@ -396,8 +396,8 @@ fn ld(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String>
         }
         (SExp::Symbol(Symbol::Reg(reg)), SExp::Immediate(im_value)) => {
             let op = match reg.as_str() {
-                REG_B => INSTR_LD_B_IMMEDIATE.op_code,
-                _ => return Err(format!("ld: unknown register: {}", reg)),
+                sm83::REG_B => INSTR_LD_TO_B_FROM_IMMEDIATE.op_code,
+                _ => return Err(format!("ld: unknown source register: {}", reg)),
             };
 
             // TODO check range of immediate value!
@@ -406,11 +406,27 @@ fn ld(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String>
             sec.memory.push_u8(*im_value as u8);
             Ok(None)
         }
+        (SExp::Symbol(Symbol::Reg(dst_reg)), SExp::Form(deref)) => {
+            let src_reg = expect_deref_reg(&deref)?;
+            let op = match (dst_reg.as_str(), src_reg) {
+                (sm83::REG_A, sm83::REG_HL) => INSTR_LD_TO_A_FROM_DEREF_HL.op_code,
+                _ => {
+                    return Err(format!(
+                        "ld: unknown source register: {}, {:?}",
+                        dst_reg, form
+                    ));
+                }
+            };
+
+            let sec = expect_in_w_sec(state)?;
+            sec.memory.push_u8(op);
+            Ok(None)
+        }
         (SExp::Form(form), SExp::Immediate(im_value)) => {
             let op = match &form.op {
                 Symbol::Reg(reg) => match reg.as_str() {
-                    REG_HL => INSTR_LD_HL_DEREF_IMMEDIATE.op_code,
-                    _ => return Err(format!("ld: unknown register: {}", reg)),
+                    sm83::REG_HL => INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE.op_code,
+                    _ => return Err(format!("ld: unknown deref register: {}", reg)),
                 },
                 illegal => return Err(format!("ld: illegal deref: {:?}", illegal)),
             };
@@ -423,23 +439,26 @@ fn ld(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String>
             Ok(None)
         }
         (SExp::Form(form), SExp::Symbol(Symbol::Reg(src_reg))) => {
-            let dst_reg = match &form.op {
-                Symbol::Reg(reg) => reg,
-                illegal => return Err(format!("ld: illegal deref: {:?}", illegal)),
-            };
-
-            let op = match (dst_reg.as_str(), src_reg.as_str()) {
-                (REG_DE, REG_A) => INSTR_LD_DE_DEREF_FROM_A.op_code,
+            let dst_reg = expect_deref_reg(&form)?;
+            let op = match (dst_reg, src_reg.as_str()) {
+                (sm83::REG_DE, sm83::REG_A) => INSTR_LD_TO_DEREF_DE_FROM_A.op_code,
                 illegal => return Err(format!("ld: illegal deref from reg: {:?}", illegal)),
             };
 
             let sec = expect_in_w_sec(state)?;
             sec.memory.push_u8(op);
-
             Ok(None)
         }
         (a1, a2) => return Err(format!("ld: illegal parameters: {:?} {:?}", a1, a2)),
     }
+}
+
+fn expect_deref_reg(form: &Form) -> Result<&str, String> {
+    let dst_reg = match &form.op {
+        Symbol::Reg(reg) => reg,
+        illegal => return Err(format!("illegal deref: {:?}", illegal)),
+    };
+    Ok(dst_reg.as_str())
 }
 
 fn jp(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String> {
