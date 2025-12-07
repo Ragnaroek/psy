@@ -185,6 +185,13 @@ fn parse_symbol(chars: &mut Peekable<Chars>) -> Result<Symbol, String> {
     }
 }
 
+#[derive(PartialEq)]
+enum ImmediateType {
+    Decimal,
+    Hex,
+    Binary,
+}
+
 fn parse_immediate(chars: &mut Peekable<Chars>) -> Result<u64, String> {
     let mut immediate = String::new();
 
@@ -200,14 +207,22 @@ fn parse_immediate(chars: &mut Peekable<Chars>) -> Result<u64, String> {
     }
 
     let may_second_num = chars.peek();
-    let mut is_hex = false;
+    let mut immediate_type = ImmediateType::Decimal;
     match may_second_num {
-        None => return Ok(parse_number_value(&immediate, false)?),
+        None => return Ok(parse_number_value(&immediate, ImmediateType::Decimal)?),
         Some(ch) => {
-            if *ch == 'x' {
-                is_hex = true;
-                chars.next(); //consume lookahead char
-                immediate.clear();
+            match *ch {
+                'x' => {
+                    immediate_type = ImmediateType::Hex;
+                    chars.next(); //consume lookahead char
+                    immediate.clear();
+                }
+                'b' => {
+                    immediate_type = ImmediateType::Binary;
+                    chars.next(); //consume lookahead char
+                    immediate.clear();
+                }
+                _ => { /* stay with Decimal */ }
             }
         }
     }
@@ -221,7 +236,7 @@ fn parse_immediate(chars: &mut Peekable<Chars>) -> Result<u64, String> {
             }
         };
 
-        if la.is_numeric() || (is_hex && la.is_ascii_hexdigit()) {
+        if la.is_numeric() || (immediate_type == ImmediateType::Hex && la.is_ascii_hexdigit()) {
             chars.advance_by(1).map_err(|e| e.to_string())?;
             immediate.push(la);
         } else {
@@ -229,20 +244,31 @@ fn parse_immediate(chars: &mut Peekable<Chars>) -> Result<u64, String> {
         }
     }
 
-    parse_number_value(&immediate, is_hex)
+    parse_number_value(&immediate, immediate_type)
 }
 
-fn parse_number_value(str: &str, is_hex: bool) -> Result<u64, String> {
-    if is_hex {
-        let hex_u64 = u64::from_str_radix(str, 16);
-        if let Ok(val_u64) = hex_u64 {
-            Ok(val_u64)
-        } else {
-            Err(format!("invalid hex string: {}", str))
+fn parse_number_value(str: &str, immediate_type: ImmediateType) -> Result<u64, String> {
+    match immediate_type {
+        ImmediateType::Decimal => {
+            let u64_val: u64 = str.parse::<u64>().map_err(|e| e.to_string())?;
+            Ok(u64_val)
         }
-    } else {
-        let u64_val: u64 = str.parse::<u64>().map_err(|e| e.to_string())?;
-        Ok(u64_val)
+        ImmediateType::Hex => {
+            let hex_u64 = u64::from_str_radix(str, 16);
+            if let Ok(val_u64) = hex_u64 {
+                Ok(val_u64)
+            } else {
+                Err(format!("invalid hex immediate: {}", str))
+            }
+        }
+        ImmediateType::Binary => {
+            let binary_u64 = u64::from_str_radix(str, 2);
+            if let Ok(val_u64) = binary_u64 {
+                Ok(val_u64)
+            } else {
+                Err(format!("invalid binary immediate: {}", str))
+            }
+        }
     }
 }
 

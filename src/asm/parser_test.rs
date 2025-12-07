@@ -22,6 +22,26 @@ fn test_parse_label_only_form() -> Result<(), String> {
 }
 
 #[test]
+fn test_parse_immediate_values() -> Result<(), String> {
+    // 'db' is a bit arbitrary, but the easiest for an immediate value test
+    let cases = [
+        ("(db 42)", 42),
+        ("(db 0x42)", 66),
+        ("(db 0b1010011010", 666),
+    ];
+
+    for (exp, val) in cases {
+        let tl = parse(&mut chars(exp))?;
+        assert_eq!(tl.forms.len(), 1);
+        assert_eq!(tl.forms[0].op, Symbol::Sym("db".to_string()));
+        assert_eq!(tl.forms[0].exps.len(), 1);
+        assert_eq!(tl.forms[0].exps[0], SExp::Immediate(val));
+    }
+
+    Ok(())
+}
+
+#[test]
 fn test_parse_include() -> Result<(), String> {
     let tl = parse(&mut chars("(include \"gb_dma\")"))?;
     assert_eq!(tl.forms.len(), 1);
