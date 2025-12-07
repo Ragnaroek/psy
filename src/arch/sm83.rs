@@ -28,6 +28,31 @@ pub static INSTR_RST: Sm83Instr = Sm83Instr {
     immediate_args: &["0x38"],
     stream_args: 0,
 };
+
+// INC
+pub static INSTR_INC_A: Sm83Instr = Sm83Instr {
+    mnemonic: "INC %a",
+    op_code: 0x3C,
+    immediate_args: &[],
+    stream_args: 0,
+};
+
+pub static INSTR_INC_DE: Sm83Instr = Sm83Instr {
+    mnemonic: "INC %de",
+    op_code: 0x13,
+    immediate_args: &[],
+    stream_args: 0,
+};
+
+pub static INSTR_INC_HL: Sm83Instr = Sm83Instr {
+    mnemonic: "INC %hl",
+    op_code: 0x23,
+    immediate_args: &[],
+    stream_args: 0,
+};
+
+// LD
+
 pub static INSTR_LD_TO_HL_FROM_LABEL: Sm83Instr = Sm83Instr {
     mnemonic: "LD %hl",
     op_code: 0x21,
@@ -75,6 +100,9 @@ pub static INSTRUCTIONS: &[&Sm83Instr] = &[
     &INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE,
     &INSTR_LD_TO_DEREF_DE_FROM_A,
     &INSTR_LD_TO_A_FROM_DEREF_HL,
+    &INSTR_INC_A,
+    &INSTR_INC_DE,
+    &INSTR_INC_HL,
 ];
 
 pub fn decode(op: u8) -> Result<&'static Sm83Instr, String> {

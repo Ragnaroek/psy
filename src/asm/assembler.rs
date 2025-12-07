@@ -3,8 +3,9 @@
 mod assembler_test;
 
 use crate::arch::sm83::{
-    self, INSTR_LD_TO_A_FROM_DEREF_HL, INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_DE_FROM_LABEL,
-    INSTR_LD_TO_DEREF_DE_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE, INSTR_LD_TO_HL_FROM_LABEL,
+    self, INSTR_INC_A, INSTR_INC_DE, INSTR_INC_HL, INSTR_LD_TO_A_FROM_DEREF_HL,
+    INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_DE_FROM_LABEL, INSTR_LD_TO_DEREF_DE_FROM_A,
+    INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE, INSTR_LD_TO_HL_FROM_LABEL,
 };
 use crate::asm::parser::{Address, Form, Label, SExp, Symbol, TopLevel, parse_from_file};
 use std::collections::HashMap;
@@ -168,7 +169,7 @@ fn assemble_in_state(pasm: TopLevel, state: &mut State) -> Result<(), String> {
                 } else if sym_name == "jp" {
                     jp(state, form)?
                 } else if sym_name == "inc" {
-                    inc(state)?
+                    inc(state, form)?
                 } else if sym_name == "dec" {
                     dec(state)?
                 } else if sym_name == "jr" {
@@ -567,8 +568,25 @@ fn check_jr_jump(rel_dist: i32) -> Result<(), String> {
     Ok(())
 }
 
-fn inc(state: &mut State) -> Result<Option<UnresolvedLabel>, String> {
-    println!("!inc");
+fn inc(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String> {
+    if form.exps.len() != 1 {
+        return Err("inc: needs exactly one argument".to_string());
+    }
+
+    match &form.exps[0] {
+        SExp::Symbol(Symbol::Reg(reg)) => {
+            let op = match reg.as_str() {
+                sm83::REG_A => INSTR_INC_A.op_code,
+                sm83::REG_DE => INSTR_INC_DE.op_code,
+                sm83::REG_HL => INSTR_INC_HL.op_code,
+                illegal_reg => return Err(format!("inc: unknow register: {}", illegal_reg)),
+            };
+
+            let sec = expect_in_w_sec(state)?;
+            sec.memory.push_u8(op);
+        }
+        illegal => return Err(format!("inc: illegal argument: {:?}", illegal)),
+    }
     Ok(None)
 }
 

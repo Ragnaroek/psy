@@ -1,10 +1,11 @@
 use crate::arch::sm83::{
-    INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_DE_FROM_LABEL, INSTR_LD_TO_DEREF_DE_FROM_A,
-    INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE, INSTR_LD_TO_HL_FROM_LABEL,
+    INSTR_INC_A, INSTR_INC_DE, INSTR_INC_HL, INSTR_LD_TO_B_FROM_IMMEDIATE,
+    INSTR_LD_TO_DE_FROM_LABEL, INSTR_LD_TO_DEREF_DE_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE,
+    INSTR_LD_TO_HL_FROM_LABEL,
 };
 use crate::asm::assembler::{
     JP, JR, JR_NZ, Label, Memory, Section, State, UnresolvedLabel, check_16_bit_address_range,
-    check_jr_jump, ds, expect_label_name, jp, jr, ld,
+    check_jr_jump, ds, expect_label_name, inc, jp, jr, ld,
 };
 
 use crate::asm::parser::{Address, parse_from_string};
@@ -287,22 +288,59 @@ fn test_ld_ok() -> Result<(), String> {
         let sec = state.lookup_section(&TEST_SEC_NAME).expect("test sec");
         assert_eq!(
             sec.memory.mem[0], inst1,
-            "expression={:?}, address={:?}, inst1 was {:x}",
+            "ld expression={:?}, address={:?}, inst1 was {:x}",
             exp, expect_address, sec.memory.mem[0]
         );
         assert_eq!(
             sec.memory.mem[1], inst2,
-            "expression={:?}, address={:?}, inst2 was {:x}",
+            "ld expression={:?}, address={:?}, inst2 was {:x}",
             exp, expect_address, sec.memory.mem[1]
         );
         assert_eq!(
             sec.memory.mem[2], inst3,
-            "expression={:?}, address={:?}, inst3 was {:x}",
+            "ld expression={:?}, address={:?}, inst3 was {:x}",
             exp, expect_address, sec.memory.mem[2]
         );
     }
     Ok(())
 }
+
+#[test]
+fn test_inc_fails() -> Result<(), String> {
+    let cases = [
+        ("(inc)", "inc: needs exactly one argument"),
+        ("(inc 42)", "inc: illegal argument: Immediate(42)"),
+    ];
+
+    for (exp, err) in cases {
+        let mut state = test_state();
+        let tl = parse_from_string(exp)?;
+
+        let r = inc(&mut state, &tl.forms[0]);
+
+        assert_eq!(r.unwrap_err(), err);
+    }
+    Ok(())
+}
+
+#[test]
+fn test_inc_ok() -> Result<(), String> {
+    let cases = [
+        ("(inc %a)", INSTR_INC_A.op_code),
+        ("(inc %de)", INSTR_INC_DE.op_code),
+        ("(inc %hl)", INSTR_INC_HL.op_code),
+    ];
+    for (exp, op) in cases {
+        let mut state = test_state();
+        let tl = parse_from_string(exp)?;
+        inc(&mut state, &tl.forms[0])?;
+
+        let sec = state.lookup_section(&TEST_SEC_NAME).expect("test sec");
+        assert_eq!(sec.memory.mem[0], op, "inc expression={:?}", exp);
+    }
+    Ok(())
+}
+
 // helper
 
 static TEST_SEC_NAME: &'static str = "test-section";
