@@ -51,6 +51,35 @@ pub static INSTR_INC_HL: Sm83Instr = Sm83Instr {
     stream_args: 0,
 };
 
+// DEC
+pub static INSTR_DEC_A: Sm83Instr = Sm83Instr {
+    mnemonic: "DEC %a",
+    op_code: 0x3D,
+    immediate_args: &[],
+    stream_args: 0,
+};
+
+pub static INSTR_DEC_B: Sm83Instr = Sm83Instr {
+    mnemonic: "DEC %b",
+    op_code: 0x05,
+    immediate_args: &[],
+    stream_args: 0,
+};
+
+pub static INSTR_DEC_DE: Sm83Instr = Sm83Instr {
+    mnemonic: "DEC %de",
+    op_code: 0x1B,
+    immediate_args: &[],
+    stream_args: 0,
+};
+
+pub static INSTR_DEC_HL: Sm83Instr = Sm83Instr {
+    mnemonic: "DEC %hl",
+    op_code: 0x2B,
+    immediate_args: &[],
+    stream_args: 0,
+};
+
 // LD
 
 pub static INSTR_LD_TO_HL_FROM_LABEL: Sm83Instr = Sm83Instr {

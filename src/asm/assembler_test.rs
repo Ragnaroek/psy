@@ -1,11 +1,11 @@
 use crate::arch::sm83::{
-    INSTR_INC_A, INSTR_INC_DE, INSTR_INC_HL, INSTR_LD_TO_B_FROM_IMMEDIATE,
-    INSTR_LD_TO_DE_FROM_LABEL, INSTR_LD_TO_DEREF_DE_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE,
-    INSTR_LD_TO_HL_FROM_LABEL,
+    INSTR_DEC_A, INSTR_DEC_B, INSTR_DEC_DE, INSTR_DEC_HL, INSTR_INC_A, INSTR_INC_DE, INSTR_INC_HL,
+    INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_DE_FROM_LABEL, INSTR_LD_TO_DEREF_DE_FROM_A,
+    INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE, INSTR_LD_TO_HL_FROM_LABEL,
 };
 use crate::asm::assembler::{
     JP, JR, JR_NZ, Label, Memory, Section, State, UnresolvedLabel, check_16_bit_address_range,
-    check_jr_jump, ds, expect_label_name, inc, jp, jr, ld,
+    check_jr_jump, dec, ds, expect_label_name, inc, jp, jr, ld,
 };
 
 use crate::asm::parser::{Address, parse_from_string};
@@ -337,6 +337,43 @@ fn test_inc_ok() -> Result<(), String> {
 
         let sec = state.lookup_section(&TEST_SEC_NAME).expect("test sec");
         assert_eq!(sec.memory.mem[0], op, "inc expression={:?}", exp);
+    }
+    Ok(())
+}
+
+#[test]
+fn test_dec_fails() -> Result<(), String> {
+    let cases = [
+        ("(dec)", "dec: needs exactly one argument"),
+        ("(dec 42)", "dec: illegal argument: Immediate(42)"),
+    ];
+
+    for (exp, err) in cases {
+        let mut state = test_state();
+        let tl = parse_from_string(exp)?;
+
+        let r = dec(&mut state, &tl.forms[0]);
+
+        assert_eq!(r.unwrap_err(), err);
+    }
+    Ok(())
+}
+
+#[test]
+fn test_dec_ok() -> Result<(), String> {
+    let cases = [
+        ("(dec %a)", INSTR_DEC_A.op_code),
+        ("(dec %b)", INSTR_DEC_B.op_code),
+        ("(dec %de)", INSTR_DEC_DE.op_code),
+        ("(dec %hl)", INSTR_DEC_HL.op_code),
+    ];
+    for (exp, op) in cases {
+        let mut state = test_state();
+        let tl = parse_from_string(exp)?;
+        dec(&mut state, &tl.forms[0])?;
+
+        let sec = state.lookup_section(&TEST_SEC_NAME).expect("test sec");
+        assert_eq!(sec.memory.mem[0], op, "dec expression={:?}", exp);
     }
     Ok(())
 }
