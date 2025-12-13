@@ -136,14 +136,8 @@ fn assemble_in_state(pasm: TopLevel, state: &mut State) -> Result<(), String> {
 
     for form in &pasm.forms {
         // define the label with an adresse if the form is labeled
-        if let Some(label) = &form.label {
-            let lbl = label.clone(); // TODO is this clone free possible?
-            if state.label_addresses.contains_key(&lbl) {
-                return Err(format!("duplicate label definition: '{}", lbl.name()));
-            }
-            state
-                .label_addresses
-                .insert(lbl, state.current_section_address);
+        if let Some(lbl) = &form.label {
+            define_label(state, lbl.clone())?;
         }
 
         let unresolved = match &form.op {
@@ -159,7 +153,7 @@ fn assemble_in_state(pasm: TopLevel, state: &mut State) -> Result<(), String> {
                 } else if sym_name == "ds" {
                     ds(state, form)?
                 } else if sym_name == "label" {
-                    label(state)?
+                    label(state, form)?
                 } else if sym_name == "sub-section" {
                     sub_section(state)?
                 // the following forms are tempoarily handled here. Plan is
@@ -191,6 +185,16 @@ fn assemble_in_state(pasm: TopLevel, state: &mut State) -> Result<(), String> {
 
     try_resolve(&unresolved_refs, state)?;
 
+    Ok(())
+}
+
+fn define_label(state: &mut State, label: Label) -> Result<(), String> {
+    if state.label_addresses.contains_key(&label) {
+        return Err(format!("duplicate label definition: '{}", label.name()));
+    }
+    state
+        .label_addresses
+        .insert(label, state.current_section_address);
     Ok(())
 }
 
@@ -340,9 +344,18 @@ fn ds(state: &mut State, ds: &Form) -> Result<Option<UnresolvedLabel>, String> {
     Ok(None)
 }
 
-fn label(state: &mut State) -> Result<Option<UnresolvedLabel>, String> {
-    println!("!label");
-    Ok(None)
+fn label(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String> {
+    if form.exps.len() < 1 {
+        return Err("label: needs at one argument".to_string());
+    }
+
+    let may_label = is_label(&form.exps[0]);
+    if let Some(lbl) = may_label {
+        define_label(state, lbl.clone())?;
+        Ok(None)
+    } else {
+        Err("label: need a label as argument".to_string())
+    }
 }
 
 fn sub_section(state: &mut State) -> Result<Option<UnresolvedLabel>, String> {

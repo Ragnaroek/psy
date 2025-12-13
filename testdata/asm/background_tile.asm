@@ -10,7 +10,8 @@
 (ld %de 'vram)
 (ld %b 32)
 
-('copy-loop ld %a (%hl))
+(label 'copy-loop)
+(ld %a (%hl))
 (ld (%de) %a)
 (inc %hl)
 (inc %de)
@@ -24,7 +25,7 @@
 ('loop-forever jr 'loop-forever)
 
 (label 'tile-data)
-('tile-data db 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)
+(db 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)
 
 (label 'block)
 (db 0b00000000 0b11111111)
