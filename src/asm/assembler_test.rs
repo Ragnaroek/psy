@@ -33,12 +33,12 @@ fn test_jr_fails() -> Result<(), String> {
         ("(jr)", Address(0), "jr: needs at least one argument"),
         (
             "(jr 'lbl)",
-            Address(0x4000 - 127 * 8),
+            Address(0x4000 - 127),
             "jr: max -128 jumps back, was -129",
         ),
         (
             "(jr 'lbl)",
-            Address(0x4000 + 130 * 8),
+            Address(0x4000 + 130),
             "jr: max 127 jumps forward, was 128",
         ),
         (
@@ -60,7 +60,13 @@ fn test_jr_fails() -> Result<(), String> {
 
         let r = jr(&mut state, &tl.forms[0]);
 
-        assert_eq!(r.unwrap_err(), err);
+        assert!(
+            r.is_err(),
+            "expected error '{}' on expression = {:?}",
+            err,
+            exp
+        );
+        assert_eq!(r.unwrap_err(), err, "exp={:?}", exp);
     }
     Ok(())
 }
@@ -71,23 +77,23 @@ fn test_jr_ok() -> Result<(), String> {
         // jump to self
         ("(jr 'lbl)", Some(Address(0x4000)), None, JR, 0xFE),
         // jump maximum backward
-        ("(jr 'lbl)", Some(Address(0x4000 - 126 * 8)), None, JR, 0x80),
+        ("(jr 'lbl)", Some(Address(0x4000 - 126)), None, JR, 0x80),
         // jump maximum forward
-        ("(jr 'lbl)", Some(Address(0x4000 + 129 * 8)), None, JR, 0x7F),
+        ("(jr 'lbl)", Some(Address(0x4000 + 127)), None, JR, 0x7D),
         // jump nz
         (
             "(jr #nz 'lbl)",
-            Some(Address(0x4000 + 129 * 8)),
+            Some(Address(0x4000 + 127)),
             None,
             JR_NZ,
-            0x7F,
+            0x7D,
         ),
         // forward jump, address not yet defined
         (
             "(jr 'forward)",
             None,
             Some(UnresolvedLabel {
-                relative_from: Some(Address(16400)), // TEST_SEC_ADDRESS +2 bytes
+                relative_from: Some(Address(16386)), // TEST_SEC_ADDRESS +2 bytes
                 label: Label::from_string("forward".to_string()),
                 check: check_jr_jump,
                 sec_name: TEST_SEC_NAME.to_string(),
@@ -116,13 +122,13 @@ fn test_jr_ok() -> Result<(), String> {
         let sec = state.lookup_section(&TEST_SEC_NAME).expect("test sec");
         assert_eq!(
             sec.memory.mem[0], inst1,
-            "address={:?}, inst1 was {:x}",
-            expect_address, sec.memory.mem[0]
+            "address={:x}, inst1 was {:x}, expression={:?}",
+            expect_address, sec.memory.mem[0], exp,
         );
         assert_eq!(
             sec.memory.mem[1], inst2,
-            "address={:?}, inst2 was {:x}",
-            expect_address, sec.memory.mem[1]
+            "address={:x}, inst2 was {:x}, expression={:?}",
+            expect_address, sec.memory.mem[1], exp
         );
     }
 
@@ -214,6 +220,7 @@ fn test_ld_ok() -> Result<(), String> {
             "(ld %hl 'lbl)",
             Some(Address(0x4000)),
             None,
+            3,
             INSTR_LD_TO_HL_FROM_LABEL.op_code,
             0x00,
             0x40,
@@ -230,6 +237,7 @@ fn test_ld_ok() -> Result<(), String> {
                 patch_index: 1,
                 patch_width: 2,
             }),
+            3,
             INSTR_LD_TO_HL_FROM_LABEL.op_code,
             0x00,
             0x00,
@@ -238,6 +246,7 @@ fn test_ld_ok() -> Result<(), String> {
             "(ld %de 'lbl)",
             Some(Address(0x5001)),
             None,
+            3,
             INSTR_LD_TO_DE_FROM_LABEL.op_code,
             0x01,
             0x50,
@@ -247,6 +256,7 @@ fn test_ld_ok() -> Result<(), String> {
             "(ld %b 42)",
             None,
             None,
+            2,
             INSTR_LD_TO_B_FROM_IMMEDIATE.op_code,
             0x2A,
             0x00,
@@ -256,6 +266,7 @@ fn test_ld_ok() -> Result<(), String> {
             "(ld (%hl) 42)",
             None,
             None,
+            2,
             INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE.op_code,
             0x2A,
             0x00,
@@ -264,13 +275,14 @@ fn test_ld_ok() -> Result<(), String> {
             "(ld (%de) %a)",
             None,
             None,
+            1,
             INSTR_LD_TO_DEREF_DE_FROM_A.op_code,
             0x00,
             0x00,
         ),
     ];
 
-    for (exp, may_lbl_address, expect_unresolved_info, inst1, inst2, inst3) in cases {
+    for (exp, may_lbl_address, expect_unresolved_info, byte_size, inst1, inst2, inst3) in cases {
         let mut state = test_state();
         let tl = parse_from_string(exp)?;
 
@@ -301,6 +313,8 @@ fn test_ld_ok() -> Result<(), String> {
             "ld expression={:?}, address={:?}, inst3 was {:x}",
             exp, expect_address, sec.memory.mem[2]
         );
+
+        assert_eq!(state.current_section_address.0, TEST_SEC_ADDR.0 + byte_size);
     }
     Ok(())
 }
@@ -326,17 +340,19 @@ fn test_inc_fails() -> Result<(), String> {
 #[test]
 fn test_inc_ok() -> Result<(), String> {
     let cases = [
-        ("(inc %a)", INSTR_INC_A.op_code),
-        ("(inc %de)", INSTR_INC_DE.op_code),
-        ("(inc %hl)", INSTR_INC_HL.op_code),
+        ("(inc %a)", 1, INSTR_INC_A.op_code),
+        ("(inc %de)", 1, INSTR_INC_DE.op_code),
+        ("(inc %hl)", 1, INSTR_INC_HL.op_code),
     ];
-    for (exp, op) in cases {
+    for (exp, byte_size, op) in cases {
         let mut state = test_state();
         let tl = parse_from_string(exp)?;
         inc(&mut state, &tl.forms[0])?;
 
         let sec = state.lookup_section(&TEST_SEC_NAME).expect("test sec");
         assert_eq!(sec.memory.mem[0], op, "inc expression={:?}", exp);
+
+        assert_eq!(state.current_section_address.0, TEST_SEC_ADDR.0 + byte_size);
     }
     Ok(())
 }
@@ -362,18 +378,20 @@ fn test_dec_fails() -> Result<(), String> {
 #[test]
 fn test_dec_ok() -> Result<(), String> {
     let cases = [
-        ("(dec %a)", INSTR_DEC_A.op_code),
-        ("(dec %b)", INSTR_DEC_B.op_code),
-        ("(dec %de)", INSTR_DEC_DE.op_code),
-        ("(dec %hl)", INSTR_DEC_HL.op_code),
+        ("(dec %a)", 1, INSTR_DEC_A.op_code),
+        ("(dec %b)", 1, INSTR_DEC_B.op_code),
+        ("(dec %de)", 1, INSTR_DEC_DE.op_code),
+        ("(dec %hl)", 1, INSTR_DEC_HL.op_code),
     ];
-    for (exp, op) in cases {
+    for (exp, byte_size, op) in cases {
         let mut state = test_state();
         let tl = parse_from_string(exp)?;
         dec(&mut state, &tl.forms[0])?;
 
         let sec = state.lookup_section(&TEST_SEC_NAME).expect("test sec");
         assert_eq!(sec.memory.mem[0], op, "dec expression={:?}", exp);
+
+        assert_eq!(state.current_section_address.0, TEST_SEC_ADDR.0 + byte_size);
     }
     Ok(())
 }

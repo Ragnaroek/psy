@@ -192,9 +192,11 @@ fn define_label(state: &mut State, label: Label) -> Result<(), String> {
     if state.label_addresses.contains_key(&label) {
         return Err(format!("duplicate label definition: '{}", label.name()));
     }
+
     state
         .label_addresses
         .insert(label, state.current_section_address);
+
     Ok(())
 }
 
@@ -388,6 +390,8 @@ fn ld(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String>
                 _ => return Err(format!("ld: unknown source register: {}", reg)),
             };
 
+            state.current_section_address.add_bytes(3);
+
             let may_address = state.label_addresses.get(&lbl);
             if let Some(lbl_address) = may_address {
                 let from_address = lbl_address.0 as u16;
@@ -415,6 +419,8 @@ fn ld(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String>
                 _ => return Err(format!("ld: unknown source register: {}", reg)),
             };
 
+            state.current_section_address.add_bytes(2);
+
             // TODO check range of immediate value!
             let sec = expect_in_w_sec(state)?;
             sec.memory.push_u8(op);
@@ -433,6 +439,8 @@ fn ld(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String>
                 }
             };
 
+            state.current_section_address.add_bytes(1);
+
             let sec = expect_in_w_sec(state)?;
             sec.memory.push_u8(op);
             Ok(None)
@@ -445,6 +453,8 @@ fn ld(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String>
                 },
                 illegal => return Err(format!("ld: illegal deref: {:?}", illegal)),
             };
+
+            state.current_section_address.add_bytes(2);
 
             // TODO check range of immediate value!
             let sec = expect_in_w_sec(state)?;
@@ -459,6 +469,8 @@ fn ld(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String>
                 (sm83::REG_DE, sm83::REG_A) => INSTR_LD_TO_DEREF_DE_FROM_A.op_code,
                 illegal => return Err(format!("ld: illegal deref from reg: {:?}", illegal)),
             };
+
+            state.current_section_address.add_bytes(1);
 
             let sec = expect_in_w_sec(state)?;
             sec.memory.push_u8(op);
@@ -533,7 +545,7 @@ fn jr(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String>
         let may_address = state.label_addresses.get(&lbl);
         if let Some(lbl_address) = may_address {
             // resolve and check it immeditately
-            let rel_dist = (lbl_address.0 as i32 - state.current_section_address.0 as i32) / 8;
+            let rel_dist = lbl_address.0 as i32 - state.current_section_address.0 as i32;
             check_jr_jump(rel_dist)?;
             let sec = expect_in_w_sec(state)?;
             write_jr_instr(sec, flag, rel_dist as u8)?;
@@ -596,6 +608,8 @@ fn inc(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String
                 illegal_reg => return Err(format!("inc: unknow register: {}", illegal_reg)),
             };
 
+            state.current_section_address.add_bytes(1);
+
             let sec = expect_in_w_sec(state)?;
             sec.memory.push_u8(op);
         }
@@ -618,6 +632,8 @@ fn dec(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String
                 sm83::REG_HL => INSTR_DEC_HL.op_code,
                 illegal_reg => return Err(format!("dec: unknow register: {}", illegal_reg)),
             };
+
+            state.current_section_address.add_bytes(1);
 
             let sec = expect_in_w_sec(state)?;
             sec.memory.push_u8(op);

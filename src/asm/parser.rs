@@ -23,7 +23,7 @@ pub struct Address(pub u64);
 
 impl Address {
     pub fn add_bytes(&mut self, n: u64) {
-        self.0 += n * 8;
+        self.0 += n;
     }
 }
 
