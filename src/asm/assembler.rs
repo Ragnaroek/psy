@@ -367,10 +367,6 @@ fn sub_section(state: &mut State) -> Result<Option<UnresolvedLabel>, String> {
 
 // non-primitive forms, temporarily implemented in Rust directly
 
-const JP: u8 = 0xC3;
-const JR: u8 = 0x18;
-const JR_NZ: u8 = 0x20;
-
 fn nop(state: &mut State) -> Result<Option<UnresolvedLabel>, String> {
     state.current_section_address.add_bytes(1);
     let sec = expect_in_w_sec(state)?;
@@ -497,13 +493,13 @@ fn jp(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String>
         let to_address = lbl_address.0 as i32;
         check_16_bit_address_range(to_address)?;
         let sec = expect_in_w_sec(state)?;
-        sec.memory.push_u8(JP);
+        sec.memory.push_u8(sm83::INSTR_JP.op_code);
         sec.memory.push_u16(to_address as u16);
 
         Ok(None)
     } else {
         let sec = expect_in_w_sec(state)?;
-        sec.memory.push_u8(JP);
+        sec.memory.push_u8(sm83::INSTR_JP.op_code);
         sec.memory.push_u16(0);
 
         Ok(Some(UnresolvedLabel {
@@ -573,9 +569,9 @@ fn jr(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String>
 
 fn write_jr_instr(sec: &mut Section, flag: Option<&String>, rel_dist: u8) -> Result<(), String> {
     match flag {
-        None => sec.memory.push_u8(JR),
+        None => sec.memory.push_u8(sm83::INSTR_JR.op_code),
         Some(flag) => match flag.as_str() {
-            "nz" => sec.memory.push_u8(JR_NZ),
+            "nz" => sec.memory.push_u8(sm83::INSTR_JR_NZ.op_code),
             _ => return Err(format!("jr: unknown flag '{}'", flag)),
         },
     }

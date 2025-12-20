@@ -1,11 +1,11 @@
 use crate::arch::sm83::{
-    INSTR_DEC_A, INSTR_DEC_B, INSTR_DEC_DE, INSTR_DEC_HL, INSTR_INC_A, INSTR_INC_DE, INSTR_INC_HL,
-    INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_DE_FROM_LABEL, INSTR_LD_TO_DEREF_DE_FROM_A,
-    INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE, INSTR_LD_TO_HL_FROM_LABEL,
+    self, INSTR_DEC_A, INSTR_DEC_B, INSTR_DEC_DE, INSTR_DEC_HL, INSTR_INC_A, INSTR_INC_DE,
+    INSTR_INC_HL, INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_DE_FROM_LABEL,
+    INSTR_LD_TO_DEREF_DE_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE, INSTR_LD_TO_HL_FROM_LABEL,
 };
 use crate::asm::assembler::{
-    JP, JR, JR_NZ, Label, Memory, Section, State, UnresolvedLabel, check_16_bit_address_range,
-    check_jr_jump, dec, ds, expect_label_name, inc, jp, jr, ld,
+    Label, Memory, Section, State, UnresolvedLabel, check_16_bit_address_range, check_jr_jump, dec,
+    ds, expect_label_name, inc, jp, jr, ld,
 };
 
 use crate::asm::parser::{Address, parse_from_string};
@@ -75,17 +75,35 @@ fn test_jr_fails() -> Result<(), String> {
 fn test_jr_ok() -> Result<(), String> {
     let cases = [
         // jump to self
-        ("(jr 'lbl)", Some(Address(0x4000)), None, JR, 0xFE),
+        (
+            "(jr 'lbl)",
+            Some(Address(0x4000)),
+            None,
+            sm83::INSTR_JR.op_code,
+            0xFE,
+        ),
         // jump maximum backward
-        ("(jr 'lbl)", Some(Address(0x4000 - 126)), None, JR, 0x80),
+        (
+            "(jr 'lbl)",
+            Some(Address(0x4000 - 126)),
+            None,
+            sm83::INSTR_JR.op_code,
+            0x80,
+        ),
         // jump maximum forward
-        ("(jr 'lbl)", Some(Address(0x4000 + 127)), None, JR, 0x7D),
+        (
+            "(jr 'lbl)",
+            Some(Address(0x4000 + 127)),
+            None,
+            sm83::INSTR_JR.op_code,
+            0x7D,
+        ),
         // jump nz
         (
             "(jr #nz 'lbl)",
             Some(Address(0x4000 + 127)),
             None,
-            JR_NZ,
+            sm83::INSTR_JR_NZ.op_code,
             0x7D,
         ),
         // forward jump, address not yet defined
@@ -100,7 +118,7 @@ fn test_jr_ok() -> Result<(), String> {
                 patch_index: 1, // address bytes start at byte 1
                 patch_width: 1,
             }),
-            JR,
+            sm83::INSTR_JR.op_code,
             0x00,
         ),
     ];
@@ -139,7 +157,14 @@ fn test_jr_ok() -> Result<(), String> {
 fn test_jp_ok() -> Result<(), String> {
     let cases = [
         // jump to self
-        ("(jp 'lbl)", Some(Address(0x4000)), None, JP, 0x00, 0x40),
+        (
+            "(jp 'lbl)",
+            Some(Address(0x4000)),
+            None,
+            sm83::INSTR_JP.op_code,
+            0x00,
+            0x40,
+        ),
         // forward jump, address not yet defined
         (
             "(jp 'forward)",
@@ -152,7 +177,7 @@ fn test_jp_ok() -> Result<(), String> {
                 patch_index: 1, // address bytes start at byte 1
                 patch_width: 2,
             }),
-            JP,
+            sm83::INSTR_JP.op_code,
             0x00,
             0x00,
         ),

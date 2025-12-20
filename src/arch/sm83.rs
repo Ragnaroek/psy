@@ -16,17 +16,35 @@ pub static INSTR_NOP: Sm83Instr = Sm83Instr {
     immediate_args: &[],
     stream_args: 0,
 };
+
+pub static INSTR_RST: Sm83Instr = Sm83Instr {
+    mnemonic: "RST",
+    op_code: 0xFF,
+    immediate_args: &["0x38"],
+    stream_args: 0,
+};
+
+// JP
 pub static INSTR_JP: Sm83Instr = Sm83Instr {
     mnemonic: "JP",
     op_code: 0xC3,
     immediate_args: &[],
     stream_args: 2,
 };
-pub static INSTR_RST: Sm83Instr = Sm83Instr {
-    mnemonic: "RST",
-    op_code: 0xFF,
-    immediate_args: &["0x38"],
-    stream_args: 0,
+
+// JR
+pub static INSTR_JR: Sm83Instr = Sm83Instr {
+    mnemonic: "JR",
+    op_code: 0x18,
+    immediate_args: &[],
+    stream_args: 1,
+};
+
+pub static INSTR_JR_NZ: Sm83Instr = Sm83Instr {
+    mnemonic: "JR #NZ",
+    op_code: 0x20,
+    immediate_args: &[],
+    stream_args: 1,
 };
 
 // INC
@@ -122,9 +140,12 @@ pub static INSTR_LD_TO_A_FROM_DEREF_HL: Sm83Instr = Sm83Instr {
 
 pub static INSTRUCTIONS: &[&Sm83Instr] = &[
     &INSTR_NOP,
-    &INSTR_JP,
     &INSTR_RST,
+    &INSTR_JP,
+    &INSTR_JR,
+    &INSTR_JR_NZ,
     &INSTR_LD_TO_HL_FROM_LABEL,
+    &INSTR_LD_TO_DE_FROM_LABEL,
     &INSTR_LD_TO_B_FROM_IMMEDIATE,
     &INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE,
     &INSTR_LD_TO_DEREF_DE_FROM_A,
@@ -132,6 +153,9 @@ pub static INSTRUCTIONS: &[&Sm83Instr] = &[
     &INSTR_INC_A,
     &INSTR_INC_DE,
     &INSTR_INC_HL,
+    &INSTR_DEC_B,
+    &INSTR_DEC_DE,
+    &INSTR_DEC_HL,
 ];
 
 pub fn decode(op: u8) -> Result<&'static Sm83Instr, String> {
