@@ -1,0 +1,2 @@
+hello-world:
+    cd .. && just asm examples/hello_world.asm examples/hello_world.gb

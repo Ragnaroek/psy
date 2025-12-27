@@ -4,9 +4,9 @@ mod assembler_test;
 
 use crate::arch::sm83::{
     self, INSTR_DEC_A, INSTR_DEC_B, INSTR_DEC_DE, INSTR_DEC_HL, INSTR_INC_A, INSTR_INC_DE,
-    INSTR_INC_HL, INSTR_LD_TO_A_FROM_DEREF_HL, INSTR_LD_TO_B_FROM_IMMEDIATE,
-    INSTR_LD_TO_DE_FROM_LABEL, INSTR_LD_TO_DEREF_DE_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE,
-    INSTR_LD_TO_HL_FROM_LABEL,
+    INSTR_INC_HL, INSTR_LD_TO_A_FROM_DEREF_HL, INSTR_LD_TO_A_FROM_IMMEDIATE,
+    INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_DE_FROM_LABEL, INSTR_LD_TO_DEREF_DE_FROM_A,
+    INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE, INSTR_LD_TO_HL_FROM_LABEL,
 };
 use crate::asm::parser::{Address, Form, Label, SExp, Symbol, TopLevel, parse_from_file};
 use std::collections::HashMap;
@@ -376,14 +376,14 @@ fn nop(state: &mut State) -> Result<Option<UnresolvedLabel>, String> {
 
 fn ld(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String> {
     if form.exps.len() < 2 {
-        return Err("ld: needs at least two arguments".to_string());
+        return Err(format!("ld: needs at least two arguments"));
     }
     match (&form.exps[0], &form.exps[1]) {
         (SExp::Symbol(Symbol::Reg(reg)), SExp::Symbol(Symbol::Label(lbl))) => {
             let op = match reg.as_str() {
                 sm83::REG_HL => INSTR_LD_TO_HL_FROM_LABEL.op_code,
                 sm83::REG_DE => INSTR_LD_TO_DE_FROM_LABEL.op_code,
-                _ => return Err(format!("ld: unknown source register: {}", reg)),
+                _ => return Err(format!("ld: unknown target register: {}", reg)),
             };
 
             state.current_section_address.add_bytes(3);
@@ -411,8 +411,9 @@ fn ld(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String>
         }
         (SExp::Symbol(Symbol::Reg(reg)), SExp::Immediate(im_value)) => {
             let op = match reg.as_str() {
+                sm83::REG_A => INSTR_LD_TO_A_FROM_IMMEDIATE.op_code,
                 sm83::REG_B => INSTR_LD_TO_B_FROM_IMMEDIATE.op_code,
-                _ => return Err(format!("ld: unknown source register: {}", reg)),
+                _ => return Err(format!("ld: unknown target register: {}", reg)),
             };
 
             state.current_section_address.add_bytes(2);

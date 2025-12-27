@@ -106,7 +106,7 @@ fn parse_form(chars: &mut Peekable<Chars>) -> Result<Form, String> {
     if is_label(&op) {
         label = Some(sym_get_label(op)?);
         skip_whitespace_and_comment(chars)?;
-        op = parse_symbol(chars)?
+        op = parse_symbol(chars)?;
     }
 
     let mut exps = Vec::new();
@@ -140,18 +140,26 @@ fn parse_form(chars: &mut Peekable<Chars>) -> Result<Form, String> {
 fn parse_symbol(chars: &mut Peekable<Chars>) -> Result<Symbol, String> {
     let mut sym = String::new();
 
-    let may_first_char = chars.next();
+    let may_first_char = chars.peek();
     let first_char = match may_first_char {
-        None => return Err("unexpected end of symbol".to_string()),
-        Some(ch) => ch,
+        None => return Ok(Symbol::Sym("".to_string())),
+        Some(ch) => *ch,
     };
+
     if first_char != ':'
         && first_char != '.'
         && first_char != '\''
         && first_char != '%'
         && first_char != '#'
     {
-        sym.push(first_char);
+        if is_sym_char(first_char) {
+            chars.advance_by(1).map_err(|e| e.to_string())?;
+            sym.push(first_char);
+        } else {
+            return Ok(Symbol::Sym("".to_string()));
+        }
+    } else {
+        chars.advance_by(1).map_err(|e| e.to_string())?;
     }
 
     loop {
@@ -163,16 +171,12 @@ fn parse_symbol(chars: &mut Peekable<Chars>) -> Result<Symbol, String> {
             }
         };
 
-        if la.is_alphanumeric() || la == '-' {
+        if is_sym_char(la) {
             chars.advance_by(1).map_err(|e| e.to_string())?;
             sym.push(la);
         } else {
             break;
         }
-    }
-
-    if sym.is_empty() {
-        return Err("error: empty symbol".to_string());
     }
 
     match first_char {
@@ -183,6 +187,10 @@ fn parse_symbol(chars: &mut Peekable<Chars>) -> Result<Symbol, String> {
         '#' => Ok(Symbol::Flag(sym)),
         _ => Ok(Symbol::Sym(sym)),
     }
+}
+
+fn is_sym_char(ch: char) -> bool {
+    ch.is_alphanumeric() || ch == '-'
 }
 
 #[derive(PartialEq)]

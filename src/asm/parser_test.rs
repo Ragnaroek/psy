@@ -1,6 +1,6 @@
 use std::{fs::File, iter::Peekable, str::Chars};
 
-use crate::asm::parser::{Label, SExp, Symbol, parse, parse_from_file};
+use crate::asm::parser::{Label, SExp, Symbol, parse, parse_from_file, parse_symbol};
 
 #[test]
 fn test_parse_test_file() -> Result<(), String> {
@@ -12,11 +12,23 @@ fn test_parse_test_file() -> Result<(), String> {
 }
 
 #[test]
-fn test_parse_label_only_form() -> Result<(), String> {
+fn test_parse_label_form() -> Result<(), String> {
     let tl = parse(&mut chars("('value1 db)"))?;
     assert_eq!(tl.forms.len(), 1);
     assert_eq!(tl.forms[0].label, Some(Label("value1".to_string())));
     assert_eq!(tl.forms[0].op, Symbol::Sym("db".to_string()));
+    assert!(tl.forms[0].exps.is_empty());
+    Ok(())
+}
+
+/// Special case form, same as the explicit (label 'lbl).
+/// The only form allowed with an operator.
+#[test]
+fn test_parse_label_only_form() -> Result<(), String> {
+    let tl = parse(&mut chars("('lbl)"))?;
+    assert_eq!(tl.forms.len(), 1);
+    assert_eq!(tl.forms[0].label, Some(Label("lbl".to_string())));
+    assert_eq!(tl.forms[0].op, Symbol::Sym("".to_string()));
     assert!(tl.forms[0].exps.is_empty());
     Ok(())
 }
@@ -85,6 +97,23 @@ fn test_parse_jr_conditional_nz() -> Result<(), String> {
         tl.forms[0].exps[1],
         SExp::Symbol(Symbol::Label(Label("lbl".to_string())))
     );
+    Ok(())
+}
+
+#[test]
+fn test_parse_symbol() -> Result<(), String> {
+    let cases = [
+        ("", Symbol::Sym("".to_string())), //empty symbol is a special case, but allowed in places
+        (")", Symbol::Sym("".to_string())),
+        ("a", Symbol::Sym("a".to_string())),
+        ("a)", Symbol::Sym("a".to_string())), // test symbol boundaries
+    ];
+
+    for (exp, symbol) in cases {
+        let parsed_symbol = parse_symbol(&mut chars(exp))?;
+        assert_eq!(parsed_symbol, symbol, "exp: {}", exp);
+    }
+
     Ok(())
 }
 
