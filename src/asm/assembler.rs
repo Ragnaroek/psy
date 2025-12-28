@@ -6,7 +6,7 @@ use crate::arch::sm83::{
     self, INSTR_DEC_A, INSTR_DEC_B, INSTR_DEC_DE, INSTR_DEC_HL, INSTR_INC_A, INSTR_INC_DE,
     INSTR_INC_HL, INSTR_LD_TO_A_FROM_DEREF_HL, INSTR_LD_TO_A_FROM_IMMEDIATE,
     INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_DE_FROM_LABEL, INSTR_LD_TO_DEREF_DE_FROM_A,
-    INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE, INSTR_LD_TO_HL_FROM_LABEL,
+    INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE, INSTR_LD_TO_DEREF_LABEL_FROM_A, INSTR_LD_TO_HL_FROM_LABEL,
 };
 use crate::asm::parser::{Address, Form, Label, SExp, Symbol, TopLevel, parse_from_file};
 use std::collections::HashMap;
@@ -325,6 +325,8 @@ fn db(state: &mut State, db: &Form) -> Result<Option<UnresolvedLabel>, String> {
             let v = expect_immediate(exp)?;
             sec.memory.push_u8(v as u8);
         }
+    } else {
+        state.current_section_address.add_bytes(1);
     }
     Ok(None)
 }
@@ -461,17 +463,51 @@ fn ld(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String>
             Ok(None)
         }
         (SExp::Form(form), SExp::Symbol(Symbol::Reg(src_reg))) => {
-            let dst_reg = expect_deref_reg(&form)?;
-            let op = match (dst_reg, src_reg.as_str()) {
-                (sm83::REG_DE, sm83::REG_A) => INSTR_LD_TO_DEREF_DE_FROM_A.op_code,
-                illegal => return Err(format!("ld: illegal deref from reg: {:?}", illegal)),
-            };
+            if let Symbol::Sym(sym) = &form.op {
+                if sym != "" || form.label.is_none() {
+                    return Err("ld: illegal label deref".to_string());
+                }
 
-            state.current_section_address.add_bytes(1);
+                let op = match src_reg.as_str() {
+                    sm83::REG_A => INSTR_LD_TO_DEREF_LABEL_FROM_A.op_code,
+                    _ => return Err("ld: illegal source reg in label deref".to_string()),
+                };
 
-            let sec = expect_in_w_sec(state)?;
-            sec.memory.push_u8(op);
-            Ok(None)
+                state.current_section_address.add_bytes(1);
+                let form_label = form.label.as_ref().expect("form label");
+                let may_address = state.label_addresses.get(form_label);
+                if let Some(lbl_address) = may_address {
+                    let from_address = lbl_address.0 as u16;
+                    let sec = expect_in_w_sec(state)?;
+                    sec.memory.push_u8(op);
+                    sec.memory.push_u16(from_address);
+                    Ok(None)
+                } else {
+                    let sec = expect_in_w_sec(state)?;
+                    sec.memory.push_u8(op);
+                    sec.memory.push_u16(0);
+                    Ok(Some(UnresolvedLabel {
+                        relative_from: None,
+                        label: form_label.clone(),
+                        check: check_16_bit_address_range,
+                        sec_name: sec.name.clone(),
+                        patch_index: sec.memory.mem_ptr - 2,
+                        patch_width: 2,
+                    }))
+                }
+            } else {
+                let dst_reg = expect_deref_reg(&form)?;
+                let op = match (dst_reg, src_reg.as_str()) {
+                    (sm83::REG_DE, sm83::REG_A) => INSTR_LD_TO_DEREF_DE_FROM_A.op_code,
+                    illegal => return Err(format!("ld: illegal deref from reg: {:?}", illegal)),
+                };
+
+                state.current_section_address.add_bytes(1);
+
+                let sec = expect_in_w_sec(state)?;
+                sec.memory.push_u8(op);
+                Ok(None)
+            }
         }
         (a1, a2) => return Err(format!("ld: illegal parameters: {:?} {:?}", a1, a2)),
     }
@@ -744,6 +780,22 @@ fn expect_in_w_sec<'a>(state: &'a mut State) -> Result<&'a mut Section, String> 
             .expect("a current section");
         if sec.label_only {
             Err(format!("section {} is label-only", sec_name))
+        } else {
+            Ok(sec)
+        }
+    } else {
+        Err("not in a section".to_string())
+    }
+}
+
+fn expect_in_r_sec<'a>(state: &'a mut State) -> Result<&'a mut Section, String> {
+    let curr_name = state.current_section_name.clone();
+    if let Some(sec_name) = curr_name {
+        let sec = state
+            .lookup_section_mut(&sec_name)
+            .expect("a current section");
+        if !sec.label_only {
+            Err(format!("section {} is not label-only", sec_name))
         } else {
             Ok(sec)
         }

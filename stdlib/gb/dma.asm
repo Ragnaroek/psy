@@ -1,8 +1,3 @@
-;TODO address constants
-;
-;def TILEMAP0 equ $9800 ; $9800-$9BFF
-;def TILEMAP1 equ $9C00 ; $9C00-$9FFF
-
 (def-section .tile-map-0
     :offset 0x9800
     :label-only true)
@@ -37,3 +32,48 @@
     :label-only true)
 (section .vram)
 ('vram db)
+
+(def-section .hw-ports
+    :offset 0xFF00
+    :length 0x80
+    :label-only true)
+(section .hw-ports)
+('hw-joyp db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+(db)
+('hw-sound db) ; aka NR52

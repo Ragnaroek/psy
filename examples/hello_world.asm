@@ -6,4 +6,4 @@
 
 (section .rom0)
 (ld %a 0)
-(ld ('rNR52) %a)
+(ld ('hw-sound) %a)

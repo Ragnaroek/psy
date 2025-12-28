@@ -136,6 +136,12 @@ pub static INSTR_LD_TO_DEREF_DE_FROM_A: Sm83Instr = Sm83Instr {
     immediate_args: &[],
     stream_args: 1,
 };
+pub static INSTR_LD_TO_DEREF_LABEL_FROM_A: Sm83Instr = Sm83Instr {
+    mnemonic: "LD ('lbl) %a",
+    op_code: 0xEA,
+    immediate_args: &[],
+    stream_args: 2,
+};
 
 pub static INSTR_LD_TO_A_FROM_DEREF_HL: Sm83Instr = Sm83Instr {
     mnemonic: "LD %a (%hl)",
