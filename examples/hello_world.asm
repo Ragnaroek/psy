@@ -5,5 +5,10 @@
 (jp 'rom0)
 
 (section .rom0)
+; Shut down audio circuitry
 (ld %a 0)
 (ld ('hw-sound) %a)
+
+;Do not turn the LCD off outside of VBlank
+(label 'wait-vb-blank)
+(ld %a ('hw-ly))

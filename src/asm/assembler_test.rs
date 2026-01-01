@@ -1,7 +1,8 @@
 use crate::arch::sm83::{
     self, INSTR_DEC_A, INSTR_DEC_B, INSTR_DEC_DE, INSTR_DEC_HL, INSTR_INC_A, INSTR_INC_DE,
-    INSTR_INC_HL, INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_DE_FROM_LABEL,
-    INSTR_LD_TO_DEREF_DE_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE, INSTR_LD_TO_HL_FROM_LABEL,
+    INSTR_INC_HL, INSTR_LD_TO_A_FROM_DEREF_LABEL, INSTR_LD_TO_B_FROM_IMMEDIATE,
+    INSTR_LD_TO_DE_FROM_LABEL, INSTR_LD_TO_DEREF_DE_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE,
+    INSTR_LD_TO_HL_FROM_LABEL,
 };
 use crate::asm::assembler::{
     Label, Memory, Section, State, UnresolvedLabel, check_16_bit_address_range, check_jr_jump, dec,
@@ -243,7 +244,10 @@ fn test_ld_ok() -> Result<(), String> {
         // load mem hl to reg
         (
             "(ld %hl 'lbl)",
-            Some(Address(0x4000)),
+            Some(TestLabelDef {
+                address: Address(0x4000),
+                name: "lbl".to_string(),
+            }),
             None,
             3,
             INSTR_LD_TO_HL_FROM_LABEL.op_code,
@@ -269,7 +273,10 @@ fn test_ld_ok() -> Result<(), String> {
         ),
         (
             "(ld %de 'lbl)",
-            Some(Address(0x5001)),
+            Some(TestLabelDef {
+                address: Address(0x5001),
+                name: "lbl".to_string(),
+            }),
             None,
             3,
             INSTR_LD_TO_DE_FROM_LABEL.op_code,
@@ -305,17 +312,30 @@ fn test_ld_ok() -> Result<(), String> {
             0x00,
             0x00,
         ),
+        (
+            "(ld %a ('lbl))",
+            Some(TestLabelDef {
+                address: Address(0x6030),
+                name: "lbl".to_string(),
+            }),
+            None,
+            3,
+            INSTR_LD_TO_A_FROM_DEREF_LABEL.op_code,
+            0x30,
+            0x60,
+        ),
     ];
 
-    for (exp, may_lbl_address, expect_unresolved_info, byte_size, inst1, inst2, inst3) in cases {
+    for (exp, may_lbl_def, expect_unresolved_info, byte_size, inst1, inst2, inst3) in cases {
         let mut state = test_state();
         let tl = parse_from_string(exp)?;
 
         let mut expect_address = 0;
-        if let Some(lbl_address) = may_lbl_address {
-            let lbl = expect_label_name(&tl.forms[0].exps[tl.forms[0].exps.len() - 1])?;
-            state.label_addresses.insert(lbl, lbl_address);
-            expect_address = lbl_address.0 as i32;
+        if let Some(lbl_def) = may_lbl_def {
+            state
+                .label_addresses
+                .insert(Label::from_string(lbl_def.name), lbl_def.address);
+            expect_address = lbl_def.address.0 as i32;
         }
 
         let got_unresolved_info = ld(&mut state, &tl.forms[0])?;
@@ -422,6 +442,11 @@ fn test_dec_ok() -> Result<(), String> {
 }
 
 // helper
+
+struct TestLabelDef {
+    address: Address,
+    name: String,
+}
 
 static TEST_SEC_NAME: &'static str = "test-section";
 static TEST_SEC_ADDR: Address = Address(0x4000);

@@ -4,9 +4,10 @@ mod assembler_test;
 
 use crate::arch::sm83::{
     self, INSTR_DEC_A, INSTR_DEC_B, INSTR_DEC_DE, INSTR_DEC_HL, INSTR_INC_A, INSTR_INC_DE,
-    INSTR_INC_HL, INSTR_LD_TO_A_FROM_DEREF_HL, INSTR_LD_TO_A_FROM_IMMEDIATE,
-    INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_DE_FROM_LABEL, INSTR_LD_TO_DEREF_DE_FROM_A,
-    INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE, INSTR_LD_TO_DEREF_LABEL_FROM_A, INSTR_LD_TO_HL_FROM_LABEL,
+    INSTR_INC_HL, INSTR_LD_TO_A_FROM_DEREF_HL, INSTR_LD_TO_A_FROM_DEREF_LABEL,
+    INSTR_LD_TO_A_FROM_IMMEDIATE, INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_DE_FROM_LABEL,
+    INSTR_LD_TO_DEREF_DE_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE,
+    INSTR_LD_TO_DEREF_LABEL_FROM_A, INSTR_LD_TO_HL_FROM_LABEL,
 };
 use crate::asm::parser::{Address, Form, Label, SExp, Symbol, TopLevel, parse_from_file};
 use std::collections::HashMap;
@@ -426,23 +427,57 @@ fn ld(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String>
             sec.memory.push_u8(*im_value as u8);
             Ok(None)
         }
-        (SExp::Symbol(Symbol::Reg(dst_reg)), SExp::Form(deref)) => {
-            let src_reg = expect_deref_reg(&deref)?;
-            let op = match (dst_reg.as_str(), src_reg) {
-                (sm83::REG_A, sm83::REG_HL) => INSTR_LD_TO_A_FROM_DEREF_HL.op_code,
-                _ => {
-                    return Err(format!(
-                        "ld: unknown source register: {}, {:?}",
-                        dst_reg, form
-                    ));
+        (SExp::Symbol(Symbol::Reg(dst_reg)), SExp::Form(form)) => {
+            if let Symbol::Sym(sym) = &form.op {
+                if sym != "" || form.label.is_none() {
+                    return Err("ld: illegal source label deref".to_string());
                 }
-            };
 
-            state.current_section_address.add_bytes(1);
+                let op = match dst_reg.as_str() {
+                    sm83::REG_A => INSTR_LD_TO_A_FROM_DEREF_LABEL.op_code,
+                    _ => return Err("ld: illegal dest reg in label deref".to_string()),
+                };
 
-            let sec = expect_in_w_sec(state)?;
-            sec.memory.push_u8(op);
-            Ok(None)
+                state.current_section_address.add_bytes(3);
+                let form_label = form.label.as_ref().expect("form label");
+                let may_address = state.label_addresses.get(form_label);
+                if let Some(lbl_address) = may_address {
+                    let from_address = lbl_address.0 as u16;
+                    let sec = expect_in_w_sec(state)?;
+                    sec.memory.push_u8(op);
+                    sec.memory.push_u16(from_address);
+                    Ok(None)
+                } else {
+                    let sec = expect_in_w_sec(state)?;
+                    sec.memory.push_u8(op);
+                    sec.memory.push_u16(0);
+                    Ok(Some(UnresolvedLabel {
+                        relative_from: None,
+                        label: form_label.clone(),
+                        check: check_16_bit_address_range,
+                        sec_name: sec.name.clone(),
+                        patch_index: sec.memory.mem_ptr - 2,
+                        patch_width: 2,
+                    }))
+                }
+            } else {
+                let src_reg = expect_deref_reg(&form)?;
+                let op = match (dst_reg.as_str(), src_reg) {
+                    (sm83::REG_A, sm83::REG_HL) => INSTR_LD_TO_A_FROM_DEREF_HL.op_code,
+                    _ => {
+                        return Err(format!(
+                            "ld: unknown source register: {}, {:?}",
+                            dst_reg, form
+                        ));
+                    }
+                };
+
+                state.current_section_address.add_bytes(1);
+
+                let sec = expect_in_w_sec(state)?;
+                sec.memory.push_u8(op);
+                Ok(None)
+            }
         }
         (SExp::Form(form), SExp::Immediate(im_value)) => {
             let op = match &form.op {
@@ -465,7 +500,7 @@ fn ld(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String>
         (SExp::Form(form), SExp::Symbol(Symbol::Reg(src_reg))) => {
             if let Symbol::Sym(sym) = &form.op {
                 if sym != "" || form.label.is_none() {
-                    return Err("ld: illegal label deref".to_string());
+                    return Err("ld: illegal dest label deref".to_string());
                 }
 
                 let op = match src_reg.as_str() {
