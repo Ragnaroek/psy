@@ -148,10 +148,17 @@ pub static INSTR_LD_TO_DEREF_LABEL_FROM_A: Sm83Instr = Sm83Instr {
     immediate_args: &[],
     stream_args: 2,
 };
-
 pub static INSTR_LD_TO_A_FROM_DEREF_HL: Sm83Instr = Sm83Instr {
     mnemonic: "LD %a (%hl)",
     op_code: 0x7E,
+    immediate_args: &[],
+    stream_args: 1,
+};
+
+// CP
+pub static INSTR_CP_IMMEDIATE: Sm83Instr = Sm83Instr {
+    mnemonic: "CP",
+    op_code: 0xFE,
     immediate_args: &[],
     stream_args: 1,
 };
@@ -164,6 +171,7 @@ pub static INSTRUCTIONS: &[&Sm83Instr] = &[
     &INSTR_JR_NZ,
     &INSTR_LD_TO_HL_FROM_LABEL,
     &INSTR_LD_TO_DE_FROM_LABEL,
+    &INSTR_LD_TO_A_FROM_DEREF_LABEL,
     &INSTR_LD_TO_B_FROM_IMMEDIATE,
     &INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE,
     &INSTR_LD_TO_DEREF_DE_FROM_A,
@@ -174,6 +182,7 @@ pub static INSTRUCTIONS: &[&Sm83Instr] = &[
     &INSTR_DEC_B,
     &INSTR_DEC_DE,
     &INSTR_DEC_HL,
+    &INSTR_CP_IMMEDIATE,
 ];
 
 pub fn decode(op: u8) -> Result<&'static Sm83Instr, String> {

@@ -1,12 +1,12 @@
 use crate::arch::sm83::{
-    self, INSTR_DEC_A, INSTR_DEC_B, INSTR_DEC_DE, INSTR_DEC_HL, INSTR_INC_A, INSTR_INC_DE,
-    INSTR_INC_HL, INSTR_LD_TO_A_FROM_DEREF_LABEL, INSTR_LD_TO_B_FROM_IMMEDIATE,
+    self, INSTR_CP_IMMEDIATE, INSTR_DEC_A, INSTR_DEC_B, INSTR_DEC_DE, INSTR_DEC_HL, INSTR_INC_A,
+    INSTR_INC_DE, INSTR_INC_HL, INSTR_LD_TO_A_FROM_DEREF_LABEL, INSTR_LD_TO_B_FROM_IMMEDIATE,
     INSTR_LD_TO_DE_FROM_LABEL, INSTR_LD_TO_DEREF_DE_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE,
     INSTR_LD_TO_HL_FROM_LABEL,
 };
 use crate::asm::assembler::{
-    Label, Memory, Section, State, UnresolvedLabel, check_16_bit_address_range, check_jr_jump, dec,
-    ds, expect_label_name, inc, jp, jr, ld,
+    Label, Memory, Section, State, UnresolvedLabel, check_16_bit_address_range, check_jr_jump, cp,
+    dec, ds, expect_label_name, inc, jp, jr, ld,
 };
 
 use crate::asm::parser::{Address, parse_from_string};
@@ -435,6 +435,42 @@ fn test_dec_ok() -> Result<(), String> {
 
         let sec = state.lookup_section(&TEST_SEC_NAME).expect("test sec");
         assert_eq!(sec.memory.mem[0], op, "dec expression={:?}", exp);
+
+        assert_eq!(state.current_section_address.0, TEST_SEC_ADDR.0 + byte_size);
+    }
+    Ok(())
+}
+
+#[test]
+fn test_cp_fails() -> Result<(), String> {
+    let cases = [("(cp)", "cp: needs exactly one argument")];
+
+    for (exp, err) in cases {
+        let mut state = test_state();
+        let tl = parse_from_string(exp)?;
+
+        let r = cp(&mut state, &tl.forms[0]);
+
+        assert_eq!(r.unwrap_err(), err);
+    }
+    Ok(())
+}
+
+#[test]
+fn test_cp_ok() -> Result<(), String> {
+    let cases = [("(cp 144)", 2, INSTR_CP_IMMEDIATE.op_code, 144)];
+    for (exp, byte_size, op, arg1) in cases {
+        let mut state = test_state();
+        let tl = parse_from_string(exp)?;
+        cp(&mut state, &tl.forms[0])?;
+
+        let sec = state.lookup_section(&TEST_SEC_NAME).expect("test sec");
+        assert_eq!(sec.memory.mem[0], op, "cp expression={:?}", exp);
+        assert_eq!(
+            sec.memory.mem[1], arg1,
+            "cp expression={:?}, arg1 was {:x}",
+            exp, sec.memory.mem[1]
+        );
 
         assert_eq!(state.current_section_address.0, TEST_SEC_ADDR.0 + byte_size);
     }

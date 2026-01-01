@@ -170,6 +170,8 @@ fn assemble_in_state(pasm: TopLevel, state: &mut State) -> Result<(), String> {
                     dec(state, form)?
                 } else if sym_name == "jr" {
                     jr(state, form)?
+                } else if sym_name == "cp" {
+                    cp(state, form)?
                 } else if sym_name == "nop" {
                     nop(state)?
                 } else {
@@ -369,6 +371,24 @@ fn sub_section(state: &mut State) -> Result<Option<UnresolvedLabel>, String> {
 }
 
 // non-primitive forms, temporarily implemented in Rust directly
+
+fn cp(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String> {
+    if form.exps.len() < 1 {
+        return Err(format!("cp: needs exactly one argument"));
+    }
+
+    match &form.exps[0] {
+        SExp::Immediate(im_val) => {
+            state.current_section_address.add_bytes(2);
+            let sec = expect_in_w_sec(state)?;
+            sec.memory.push_u8(sm83::INSTR_CP_IMMEDIATE.op_code);
+            sec.memory.push_u8(*im_val as u8);
+        }
+        illegal => return Err(format!("cp: illegal parameters: {:?}", illegal)),
+    }
+
+    Ok(None)
+}
 
 fn nop(state: &mut State) -> Result<Option<UnresolvedLabel>, String> {
     state.current_section_address.add_bytes(1);
