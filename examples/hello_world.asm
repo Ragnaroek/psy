@@ -13,3 +13,4 @@
 (label 'wait-vb-blank)
 (ld %a ('hw-ly))
 (cp 144)
+(jp #c 'wait-vb-blank)

@@ -104,7 +104,7 @@ fn test_jr_ok() -> Result<(), String> {
             "(jr #nz 'lbl)",
             Some(Address(0x4000 + 127)),
             None,
-            sm83::INSTR_JR_NZ.op_code,
+            sm83::INSTR_JR_IF_NZ.op_code,
             0x7D,
         ),
         // forward jump, address not yet defined
@@ -155,11 +155,35 @@ fn test_jr_ok() -> Result<(), String> {
 }
 
 #[test]
+fn test_jp_fails() -> Result<(), String> {
+    let cases = [
+        ("(jp)", "jp: needs at least one argument"),
+        ("(jp #c 'foo 'bar)", "jp: illegal arguments"),
+    ];
+
+    for (exp, err) in cases {
+        let mut state = test_state();
+        let tl = parse_from_string(exp)?;
+
+        let r = jp(&mut state, &tl.forms[0]);
+
+        assert!(
+            r.is_err(),
+            "expected error '{}' on expression = {:?}",
+            err,
+            exp
+        );
+        assert_eq!(r.unwrap_err(), err, "exp={:?}", exp);
+    }
+    Ok(())
+}
+
+#[test]
 fn test_jp_ok() -> Result<(), String> {
     let cases = [
         // jump to self
         (
-            "(jp 'lbl)",
+            ("(jp 'lbl)", 0),
             Some(Address(0x4000)),
             None,
             sm83::INSTR_JP.op_code,
@@ -168,7 +192,7 @@ fn test_jp_ok() -> Result<(), String> {
         ),
         // forward jump, address not yet defined
         (
-            "(jp 'forward)",
+            ("(jp 'forward)", 0),
             None,
             Some(UnresolvedLabel {
                 relative_from: None,
@@ -182,12 +206,22 @@ fn test_jp_ok() -> Result<(), String> {
             0x00,
             0x00,
         ),
+        // jump if #c
+        (
+            ("(jp #c 'wait)", 1),
+            Some(Address(0x50AA)),
+            None,
+            sm83::INSTR_JP_IF_C.op_code,
+            0xAA,
+            0x50,
+        ),
+        // TODO jump if #c, address not yet defined
     ];
 
-    for (exp, may_lbl_address, expect_unresolved_info, inst1, inst2, inst3) in cases {
+    for ((exp, label_at), may_lbl_address, expect_unresolved_info, inst1, inst2, inst3) in cases {
         let mut state = test_state();
         let tl = parse_from_string(exp)?;
-        let lbl = expect_label_name(&tl.forms[0].exps[0])?;
+        let lbl = expect_label_name(&tl.forms[0].exps[label_at])?;
         let mut expect_address = 0;
         if let Some(lbl_address) = may_lbl_address {
             state.label_addresses.insert(lbl, lbl_address);
@@ -451,7 +485,13 @@ fn test_cp_fails() -> Result<(), String> {
 
         let r = cp(&mut state, &tl.forms[0]);
 
-        assert_eq!(r.unwrap_err(), err);
+        assert!(
+            r.is_err(),
+            "expected error '{}' on expression = {:?}",
+            err,
+            exp
+        );
+        assert_eq!(r.unwrap_err(), err, "exp={:?}", exp);
     }
     Ok(())
 }

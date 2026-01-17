@@ -577,21 +577,35 @@ fn expect_deref_reg(form: &Form) -> Result<&str, String> {
 }
 
 fn jp(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String> {
+    if form.exps.is_empty() {
+        return Err("jp: needs at least one argument".to_string());
+    }
+
+    let (flag_name, lbl) = if form.exps.len() == 1 {
+        (None, expect_label_name(&form.exps[0])?)
+    } else if form.exps.len() == 2 {
+        let flag_name = expect_flag(&form.exps[0])?;
+        let lbl = expect_label_name(&form.exps[1])?;
+        (Some(flag_name), lbl)
+    } else {
+        // illegal jump
+        return Err("jp: illegal arguments".to_string());
+    };
+
     state.current_section_address.add_bytes(3);
 
-    let lbl = expect_label_name(&form.exps[0])?;
     let may_address = state.label_addresses.get(&lbl);
     if let Some(lbl_address) = may_address {
         let to_address = lbl_address.0 as i32;
         check_16_bit_address_range(to_address)?;
         let sec = expect_in_w_sec(state)?;
-        sec.memory.push_u8(sm83::INSTR_JP.op_code);
+        sec.memory.push_u8(jp_op(flag_name)?);
         sec.memory.push_u16(to_address as u16);
 
         Ok(None)
     } else {
         let sec = expect_in_w_sec(state)?;
-        sec.memory.push_u8(sm83::INSTR_JP.op_code);
+        sec.memory.push_u8(jp_op(flag_name)?);
         sec.memory.push_u16(0);
 
         Ok(Some(UnresolvedLabel {
@@ -602,6 +616,14 @@ fn jp(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String>
             patch_index: sec.memory.mem_ptr - 2,
             patch_width: 2,
         }))
+    }
+}
+
+fn jp_op(flag_name: Option<&str>) -> Result<u8, String> {
+    match flag_name {
+        None => Ok(sm83::INSTR_JP.op_code),
+        Some(sm83::FLAG_C) => Ok(sm83::INSTR_JP_IF_C.op_code),
+        Some(illegal) => Err(format!("jr: unknown flag '{}'", illegal)),
     }
 }
 
@@ -663,7 +685,7 @@ fn write_jr_instr(sec: &mut Section, flag: Option<&String>, rel_dist: u8) -> Res
     match flag {
         None => sec.memory.push_u8(sm83::INSTR_JR.op_code),
         Some(flag) => match flag.as_str() {
-            "nz" => sec.memory.push_u8(sm83::INSTR_JR_NZ.op_code),
+            sm83::FLAG_NZ => sec.memory.push_u8(sm83::INSTR_JR_IF_NZ.op_code),
             _ => return Err(format!("jr: unknown flag '{}'", flag)),
         },
     }
@@ -788,7 +810,14 @@ fn expect_section_name(exp: &SExp) -> Result<String, String> {
 fn expect_label_name(exp: &SExp) -> Result<Label, String> {
     match exp {
         SExp::Symbol(Symbol::Label(lbl)) => Ok(lbl.clone()),
-        _ => Err("label expected".to_string()),
+        _ => Err(format!("label expected, got {:?}", exp)),
+    }
+}
+
+fn expect_flag(exp: &SExp) -> Result<&str, String> {
+    match exp {
+        SExp::Symbol(Symbol::Flag(name)) => Ok(name),
+        _ => Err(format!("flag expected, got {:?}", exp)),
     }
 }
 

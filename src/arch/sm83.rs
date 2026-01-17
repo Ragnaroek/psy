@@ -10,6 +10,11 @@ pub const REG_DE: &str = "de";
 pub const REG_A: &str = "a";
 pub const REG_B: &str = "b";
 
+// carry flag
+pub const FLAG_C: &str = "c";
+// not zero flag
+pub const FLAG_NZ: &str = "nz";
+
 pub static INSTR_NOP: Sm83Instr = Sm83Instr {
     mnemonic: "NOP",
     op_code: 0x00,
@@ -31,6 +36,12 @@ pub static INSTR_JP: Sm83Instr = Sm83Instr {
     immediate_args: &[],
     stream_args: 2,
 };
+pub static INSTR_JP_IF_C: Sm83Instr = Sm83Instr {
+    mnemonic: "JP #C",
+    op_code: 0xDA,
+    immediate_args: &[],
+    stream_args: 2,
+};
 
 // JR
 pub static INSTR_JR: Sm83Instr = Sm83Instr {
@@ -40,7 +51,7 @@ pub static INSTR_JR: Sm83Instr = Sm83Instr {
     stream_args: 1,
 };
 
-pub static INSTR_JR_NZ: Sm83Instr = Sm83Instr {
+pub static INSTR_JR_IF_NZ: Sm83Instr = Sm83Instr {
     mnemonic: "JR #NZ",
     op_code: 0x20,
     immediate_args: &[],
@@ -167,8 +178,9 @@ pub static INSTRUCTIONS: &[&Sm83Instr] = &[
     &INSTR_NOP,
     &INSTR_RST,
     &INSTR_JP,
+    &INSTR_JP_IF_C,
     &INSTR_JR,
-    &INSTR_JR_NZ,
+    &INSTR_JR_IF_NZ,
     &INSTR_LD_TO_HL_FROM_LABEL,
     &INSTR_LD_TO_DE_FROM_LABEL,
     &INSTR_LD_TO_A_FROM_DEREF_LABEL,
