@@ -50,10 +50,15 @@ pub static INSTR_JR: Sm83Instr = Sm83Instr {
     immediate_args: &[],
     stream_args: 1,
 };
-
 pub static INSTR_JR_IF_NZ: Sm83Instr = Sm83Instr {
     mnemonic: "JR #NZ",
     op_code: 0x20,
+    immediate_args: &[],
+    stream_args: 1,
+};
+pub static INSTR_JR_IF_C: Sm83Instr = Sm83Instr {
+    mnemonic: "JR #C",
+    op_code: 0x38,
     immediate_args: &[],
     stream_args: 1,
 };

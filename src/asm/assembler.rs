@@ -136,7 +136,7 @@ fn assemble_in_state(pasm: TopLevel, state: &mut State) -> Result<(), String> {
     let mut unresolved_refs: Vec<UnresolvedLabel> = Vec::new();
 
     for form in &pasm.forms {
-        // define the label with an adresse if the form is labeled
+        // define the label with an adress if the form is labeled
         if let Some(lbl) = &form.label {
             define_label(state, lbl.clone())?;
         }
@@ -599,14 +599,12 @@ fn jp(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String>
         let to_address = lbl_address.0 as i32;
         check_16_bit_address_range(to_address)?;
         let sec = expect_in_w_sec(state)?;
-        sec.memory.push_u8(jp_op(flag_name)?);
-        sec.memory.push_u16(to_address as u16);
+        write_jp_instr(sec, flag_name, to_address as u16)?;
 
         Ok(None)
     } else {
         let sec = expect_in_w_sec(state)?;
-        sec.memory.push_u8(jp_op(flag_name)?);
-        sec.memory.push_u16(0);
+        write_jp_instr(sec, flag_name, 0)?;
 
         Ok(Some(UnresolvedLabel {
             relative_from: None,
@@ -619,12 +617,20 @@ fn jp(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String>
     }
 }
 
-fn jp_op(flag_name: Option<&str>) -> Result<u8, String> {
-    match flag_name {
-        None => Ok(sm83::INSTR_JP.op_code),
-        Some(sm83::FLAG_C) => Ok(sm83::INSTR_JP_IF_C.op_code),
-        Some(illegal) => Err(format!("jr: unknown flag '{}'", illegal)),
-    }
+fn write_jp_instr(
+    sec: &mut Section,
+    flag_name: Option<&str>,
+    address_val: u16,
+) -> Result<(), String> {
+    let op = match flag_name {
+        None => sm83::INSTR_JP.op_code,
+        Some(sm83::FLAG_C) => sm83::INSTR_JP_IF_C.op_code,
+        Some(illegal) => return Err(format!("jr: unknown flag '{}'", illegal)),
+    };
+
+    sec.memory.push_u8(op);
+    sec.memory.push_u16(address_val);
+    Ok(())
 }
 
 fn check_16_bit_address_range(dist: i32) -> Result<(), String> {
@@ -643,53 +649,51 @@ fn jr(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String>
         return Err("jr: needs at least one argument".to_string());
     }
 
-    let (flag, lbl_ix) = if let Some(flg) = is_flag(&form.exps[0]) {
-        (Some(flg), 1)
+    let (flag_name, lbl) = if form.exps.len() == 1 {
+        (None, expect_label_name(&form.exps[0])?)
+    } else if form.exps.len() == 2 {
+        let flag_name = expect_flag(&form.exps[0])?;
+        let lbl = expect_label_name(&form.exps[1])?;
+        (Some(flag_name), lbl)
     } else {
-        (None, 0)
+        // illegal jump
+        return Err("jr: illegal arguments".to_string());
     };
 
-    if let Some(lbl) = is_label(&form.exps[lbl_ix]) {
-        state.current_section_address.add_bytes(2);
+    state.current_section_address.add_bytes(2);
 
-        let may_address = state.label_addresses.get(&lbl);
-        if let Some(lbl_address) = may_address {
-            // resolve and check it immeditately
-            let rel_dist = lbl_address.0 as i32 - state.current_section_address.0 as i32;
-            check_jr_jump(rel_dist)?;
-            let sec = expect_in_w_sec(state)?;
-            write_jr_instr(sec, flag, rel_dist as u8)?;
-            Ok(None)
-        } else {
-            let curr_address = state.current_section_address;
-            let sec = expect_in_w_sec(state)?;
-            write_jr_instr(sec, flag, 0)?;
-            Ok(Some(UnresolvedLabel {
-                relative_from: Some(curr_address),
-                label: lbl.clone(),
-                check: check_jr_jump,
-                sec_name: sec.name.clone(),
-                patch_index: sec.memory.mem_ptr - 1,
-                patch_width: 1,
-            }))
-        }
+    let may_address = state.label_addresses.get(&lbl);
+    if let Some(lbl_address) = may_address {
+        // resolve and check it immediately
+        let rel_dist = lbl_address.0 as i32 - state.current_section_address.0 as i32;
+        check_jr_jump(rel_dist)?;
+        let sec = expect_in_w_sec(state)?;
+        write_jr_instr(sec, flag_name, rel_dist as u8)?;
+        Ok(None)
     } else {
-        Err(format!(
-            "jr currently only supports labels, was: {:?}",
-            &form.exps[0]
-        ))
+        let curr_address = state.current_section_address;
+        let sec = expect_in_w_sec(state)?;
+        write_jr_instr(sec, flag_name, 0)?;
+        Ok(Some(UnresolvedLabel {
+            relative_from: Some(curr_address),
+            label: lbl.clone(),
+            check: check_jr_jump,
+            sec_name: sec.name.clone(),
+            patch_index: sec.memory.mem_ptr - 1,
+            patch_width: 1,
+        }))
     }
 }
 
-fn write_jr_instr(sec: &mut Section, flag: Option<&String>, rel_dist: u8) -> Result<(), String> {
-    match flag {
-        None => sec.memory.push_u8(sm83::INSTR_JR.op_code),
-        Some(flag) => match flag.as_str() {
-            sm83::FLAG_NZ => sec.memory.push_u8(sm83::INSTR_JR_IF_NZ.op_code),
-            _ => return Err(format!("jr: unknown flag '{}'", flag)),
-        },
-    }
+fn write_jr_instr(sec: &mut Section, flag: Option<&str>, rel_dist: u8) -> Result<(), String> {
+    let op = match flag {
+        None => sm83::INSTR_JR.op_code,
+        Some(sm83::FLAG_C) => sm83::INSTR_JR_IF_C.op_code,
+        Some(sm83::FLAG_NZ) => sm83::INSTR_JR_IF_NZ.op_code,
+        Some(illegal) => return Err(format!("jr: unknown flag '{}'", illegal)),
+    };
 
+    sec.memory.push_u8(op);
     sec.memory.push_u8(rel_dist);
     Ok(())
 }

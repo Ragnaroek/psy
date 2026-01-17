@@ -99,14 +99,6 @@ fn test_jr_ok() -> Result<(), String> {
             sm83::INSTR_JR.op_code,
             0x7D,
         ),
-        // jump nz
-        (
-            "(jr #nz 'lbl)",
-            Some(Address(0x4000 + 127)),
-            None,
-            sm83::INSTR_JR_IF_NZ.op_code,
-            0x7D,
-        ),
         // forward jump, address not yet defined
         (
             "(jr 'forward)",
@@ -120,6 +112,37 @@ fn test_jr_ok() -> Result<(), String> {
                 patch_width: 1,
             }),
             sm83::INSTR_JR.op_code,
+            0x00,
+        ),
+        // jump nz
+        (
+            "(jr #nz 'lbl)",
+            Some(Address(0x4000 + 127)),
+            None,
+            sm83::INSTR_JR_IF_NZ.op_code,
+            0x7D,
+        ),
+        // jump c
+        (
+            "(jr #c 'lbl)",
+            Some(Address(0x4000 + 127)),
+            None,
+            sm83::INSTR_JR_IF_C.op_code,
+            0x7D,
+        ),
+        // jump flag, address not yet defined
+        (
+            "(jr #c 'lbl)",
+            None,
+            Some(UnresolvedLabel {
+                relative_from: Some(Address(16386)), // TEST_SEC_ADDRESS +2 bytes
+                label: Label::from_string("lbl".to_string()),
+                check: check_jr_jump,
+                sec_name: TEST_SEC_NAME.to_string(),
+                patch_index: 1, // address bytes start at byte 1
+                patch_width: 1,
+            }),
+            sm83::INSTR_JR_IF_C.op_code,
             0x00,
         ),
     ];
