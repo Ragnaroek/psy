@@ -1,8 +1,9 @@
 use crate::arch::sm83::{
     self, INSTR_CP_IMMEDIATE, INSTR_DEC_A, INSTR_DEC_B, INSTR_DEC_DE, INSTR_DEC_HL, INSTR_INC_A,
-    INSTR_INC_DE, INSTR_INC_HL, INSTR_LD_TO_A_FROM_DEREF_LABEL, INSTR_LD_TO_B_FROM_IMMEDIATE,
-    INSTR_LD_TO_DE_FROM_LABEL, INSTR_LD_TO_DEREF_DE_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE,
-    INSTR_LD_TO_DEREF_LABEL_FROM_A, INSTR_LD_TO_HL_FROM_LABEL,
+    INSTR_INC_DE, INSTR_INC_HL, INSTR_LD_TO_A_FROM_DEREF_LABEL, INSTR_LD_TO_A_FROM_IMMEDIATE,
+    INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_DE_FROM_LABEL, INSTR_LD_TO_DEREF_DE_FROM_A,
+    INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE, INSTR_LD_TO_DEREF_LABEL_FROM_A,
+    INSTR_LD_TO_HL_FROM_IMMEDIATE, INSTR_LD_TO_HL_FROM_LABEL,
 };
 use crate::asm::assembler::{
     Label, Memory, Section, State, UnresolvedLabel, assemble_in_state, check_16_bit_address_range,
@@ -342,12 +343,39 @@ fn test_ld_ok() -> Result<(), String> {
         ),
         // load immediate to reg
         (
+            "(ld %a 42)",
+            None,
+            None,
+            2,
+            INSTR_LD_TO_A_FROM_IMMEDIATE.op_code,
+            0x2A,
+            0x00,
+        ),
+        (
             "(ld %b 42)",
             None,
             None,
             2,
             INSTR_LD_TO_B_FROM_IMMEDIATE.op_code,
             0x2A,
+            0x00,
+        ),
+        (
+            "(ld %b 42)",
+            None,
+            None,
+            2,
+            INSTR_LD_TO_B_FROM_IMMEDIATE.op_code,
+            0x2A,
+            0x00,
+        ),
+        (
+            "(ld %hl 32)",
+            None,
+            None,
+            2,
+            INSTR_LD_TO_HL_FROM_IMMEDIATE.op_code,
+            0x20,
             0x00,
         ),
         // load deref immediate

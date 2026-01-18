@@ -7,7 +7,7 @@ use crate::arch::sm83::{
     INSTR_INC_HL, INSTR_LD_TO_A_FROM_DEREF_HL, INSTR_LD_TO_A_FROM_DEREF_LABEL,
     INSTR_LD_TO_A_FROM_IMMEDIATE, INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_DE_FROM_LABEL,
     INSTR_LD_TO_DEREF_DE_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE,
-    INSTR_LD_TO_DEREF_LABEL_FROM_A, INSTR_LD_TO_HL_FROM_LABEL,
+    INSTR_LD_TO_DEREF_LABEL_FROM_A, INSTR_LD_TO_HL_FROM_IMMEDIATE, INSTR_LD_TO_HL_FROM_LABEL,
 };
 use crate::asm::parser::{Address, Form, Label, SExp, Symbol, TopLevel, parse_from_file};
 use std::collections::HashMap;
@@ -436,6 +436,7 @@ fn ld(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String>
             let op = match reg.as_str() {
                 sm83::REG_A => INSTR_LD_TO_A_FROM_IMMEDIATE.op_code,
                 sm83::REG_B => INSTR_LD_TO_B_FROM_IMMEDIATE.op_code,
+                sm83::REG_HL => INSTR_LD_TO_HL_FROM_IMMEDIATE.op_code,
                 _ => return Err(format!("ld: unknown target register: {}", reg)),
             };
 

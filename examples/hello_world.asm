@@ -14,3 +14,21 @@
 (ld %a ('hw-ly))
 (cp 144)
 (jp #c 'wait-vb-blank)
+
+; Turn the LCD off
+(ld %a 0)
+(ld ('hw-lcdc) %a)
+
+; Copy the tile data
+(ld %de 'tiles)
+(ld %hl 0x9000)
+(ld %bc (- 'tilemap-end 'tilemap))
+
+(label 'tiles)
+(db 0x00 0xff 0x00 0xff 0x00 0xff 0x00 0xff 0x00 0xff 0x00 0xff 0x00 0xff 0x00 0xff)
+; TODO define remaining tiles data
+
+
+(label 'tilemap)
+; TODO define tilemap
+(label 'tilemap-end
