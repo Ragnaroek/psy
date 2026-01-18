@@ -528,7 +528,7 @@ fn ld(state: &mut State, form: &Form) -> Result<Option<UnresolvedLabel>, String>
                     _ => return Err("ld: illegal source reg in label deref".to_string()),
                 };
 
-                state.current_section_address.add_bytes(1);
+                state.current_section_address.add_bytes(3);
                 let form_label = form.label.as_ref().expect("form label");
                 let may_address = state.label_addresses.get(form_label);
                 if let Some(lbl_address) = may_address {

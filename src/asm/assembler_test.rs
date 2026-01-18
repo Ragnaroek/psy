@@ -2,11 +2,11 @@ use crate::arch::sm83::{
     self, INSTR_CP_IMMEDIATE, INSTR_DEC_A, INSTR_DEC_B, INSTR_DEC_DE, INSTR_DEC_HL, INSTR_INC_A,
     INSTR_INC_DE, INSTR_INC_HL, INSTR_LD_TO_A_FROM_DEREF_LABEL, INSTR_LD_TO_B_FROM_IMMEDIATE,
     INSTR_LD_TO_DE_FROM_LABEL, INSTR_LD_TO_DEREF_DE_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE,
-    INSTR_LD_TO_HL_FROM_LABEL,
+    INSTR_LD_TO_DEREF_LABEL_FROM_A, INSTR_LD_TO_HL_FROM_LABEL,
 };
 use crate::asm::assembler::{
-    Label, Memory, Section, State, UnresolvedLabel, check_16_bit_address_range, check_jr_jump, cp,
-    dec, ds, expect_label_name, inc, jp, jr, ld,
+    Label, Memory, Section, State, UnresolvedLabel, assemble_in_state, check_16_bit_address_range,
+    check_jr_jump, cp, dec, ds, expect_label_name, inc, jp, jr, ld,
 };
 
 use crate::asm::parser::{Address, parse_from_string};
@@ -381,6 +381,18 @@ fn test_ld_ok() -> Result<(), String> {
             0x30,
             0x60,
         ),
+        (
+            "(ld ('lbl) %a",
+            Some(TestLabelDef {
+                address: Address(0x2050),
+                name: "lbl".to_string(),
+            }),
+            None,
+            3,
+            INSTR_LD_TO_DEREF_LABEL_FROM_A.op_code,
+            0x50,
+            0x20,
+        ),
     ];
 
     for (exp, may_lbl_def, expect_unresolved_info, byte_size, inst1, inst2, inst3) in cases {
@@ -540,6 +552,21 @@ fn test_cp_ok() -> Result<(), String> {
     Ok(())
 }
 
+#[test]
+fn test_label() -> Result<(), String> {
+    // start at 0 so the label address computation gets easier
+    let mut state = test_state_with_section_offset(Address(0x00));
+    let lt = parse_from_string("(ld %a 0) (cp 144) (label 'test) (ld %b 0)")?;
+    assemble_in_state(lt, &mut state)?;
+
+    let lbl_address = state
+        .label_addresses
+        .get(&Label::from_string("test".to_string()));
+
+    assert_eq!(lbl_address, Some(&Address(4)));
+    Ok(())
+}
+
 // helper
 
 struct TestLabelDef {
@@ -576,11 +603,15 @@ fn assert_eq_unresolved_label(got: Option<UnresolvedLabel>, expect: Option<Unres
 }
 
 fn test_state() -> State {
+    test_state_with_section_offset(TEST_SEC_ADDR)
+}
+
+fn test_state_with_section_offset(offset_address: Address) -> State {
     let mut state = State::new();
     state.sections.push(Section {
         name: TEST_SEC_NAME.to_string(),
         length: Some(100),
-        offset: TEST_SEC_ADDR,
+        offset: offset_address,
         label_only: false,
         memory: Memory {
             mem: vec![0; 100],
@@ -588,6 +619,6 @@ fn test_state() -> State {
         },
     });
     state.current_section_name = Some(TEST_SEC_NAME.to_string());
-    state.current_section_address = TEST_SEC_ADDR;
+    state.current_section_address = offset_address;
     state
 }
