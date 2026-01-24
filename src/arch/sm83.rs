@@ -5,6 +5,8 @@ pub struct Sm83Instr {
     pub stream_args: usize,
 }
 
+pub const MAX_INSTRUCTION_BYTE_LENGTH: usize = 3;
+
 pub const REG_HL: &str = "hl";
 pub const REG_DE: &str = "de";
 pub const REG_A: &str = "a";
