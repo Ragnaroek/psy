@@ -22,13 +22,13 @@
 ; Copy the tile data
 (ld %de 'tiles)
 (ld %hl 0x9000)
-(ld %bc (- 'tilemap-end 'tilemap))
+(ld %bc (- 'tiles-end 'tiles))
 
 (label 'tiles)
 (db 0x00 0xff 0x00 0xff 0x00 0xff 0x00 0xff 0x00 0xff 0x00 0xff 0x00 0xff 0x00 0xff)
 ; TODO define remaining tiles data
-
+(label 'tiles-end)
 
 (label 'tilemap)
 ; TODO define tilemap
-(label 'tilemap-end
+(label 'tilemap-end)
