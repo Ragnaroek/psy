@@ -513,7 +513,49 @@ fn test_label() -> Result<(), String> {
 }
 
 #[test]
-fn test_resolve_label() -> Result<(), String> {
+fn test_resolve_label_fails() -> Result<(), String> {
+    let test_label = Label::from_string("lbl".to_string());
+    let cases = [
+        (
+            LabelRef {
+                reference: Ref::Relative(TEST_SEC_ADDR, test_label.clone(), check_jr_jump),
+                sec_name: TEST_SEC_NAME.to_string(),
+                patch_index: 1,
+            },
+            Address(TEST_SEC_ADDR.0 - 129),
+            "jr: max -128 jumps back, was -129",
+        ),
+        (
+            LabelRef {
+                reference: Ref::Relative(TEST_SEC_ADDR, test_label.clone(), check_jr_jump),
+                sec_name: TEST_SEC_NAME.to_string(),
+                patch_index: 1,
+            },
+            Address(TEST_SEC_ADDR.0 + 130),
+            "jr: max 127 jumps forward, was 130",
+        ),
+    ];
+
+    for (label_ref, label_address, err) in cases {
+        let mut label_refs = Vec::new();
+        label_refs.push(label_ref);
+
+        let mut state = test_state();
+        state
+            .label_addresses
+            .insert(test_label.clone(), label_address);
+
+        let r = resolve_labels(&label_refs, &mut state);
+
+        assert!(r.is_err(), "expected error '{}'", err);
+        assert_eq!(r.unwrap_err(), err);
+    }
+
+    Ok(())
+}
+
+#[test]
+fn test_resolve_label_ok() -> Result<(), String> {
     let test_label = Label::from_string("lbl".to_string());
 
     let cases = [
