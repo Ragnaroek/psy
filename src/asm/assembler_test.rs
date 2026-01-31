@@ -6,8 +6,8 @@ use crate::arch::sm83::{
     INSTR_LD_TO_HL_FROM_IMMEDIATE, INSTR_LD_TO_HL_FROM_LABEL,
 };
 use crate::asm::assembler::{
-    Label, LabelRef, Memory, Ref, Section, State, assemble_in_state, check_16_bit_address_range,
-    check_jr_jump, cp, dec, ds, expect_label_name, inc, jp, jr, ld,
+    Label, LabelRef, Memory, Ref, Section, State, assemble_in_state, check_jr_jump, cp, dec, ds,
+    expect_label_name, inc, jp, jr, ld, resolve_labels,
 };
 
 use crate::asm::parser::{Address, parse_from_string};
@@ -77,7 +77,6 @@ fn test_jr_ok() -> Result<(), String> {
                 ),
                 sec_name: TEST_SEC_NAME.to_string(),
                 patch_index: 1, // address bytes start at byte 1
-                patch_width: 1,
             }),
             sm83::INSTR_JR.op_code,
         ),
@@ -92,7 +91,6 @@ fn test_jr_ok() -> Result<(), String> {
                 ),
                 sec_name: TEST_SEC_NAME.to_string(),
                 patch_index: 1, // address bytes start at byte 1
-                patch_width: 1,
             }),
             sm83::INSTR_JR_IF_NZ.op_code,
         ),
@@ -107,7 +105,6 @@ fn test_jr_ok() -> Result<(), String> {
                 ),
                 sec_name: TEST_SEC_NAME.to_string(),
                 patch_index: 1, // address bytes start at byte 1
-                patch_width: 1,
             }),
             sm83::INSTR_JR_IF_C.op_code,
         ),
@@ -122,7 +119,6 @@ fn test_jr_ok() -> Result<(), String> {
                 ),
                 sec_name: TEST_SEC_NAME.to_string(),
                 patch_index: 1, // address bytes start at byte 1
-                patch_width: 1,
             }),
             sm83::INSTR_JR_IF_C.op_code,
         ),
@@ -185,7 +181,6 @@ fn test_jp_ok() -> Result<(), String> {
                 reference: Ref::Absolute(Label::from_string("forward".to_string())),
                 sec_name: TEST_SEC_NAME.to_string(),
                 patch_index: 1, // address bytes start at byte 1
-                patch_width: 2,
             }),
             sm83::INSTR_JP.op_code,
         ),
@@ -196,7 +191,6 @@ fn test_jp_ok() -> Result<(), String> {
                 reference: Ref::Absolute(Label::from_string("wait".to_string())),
                 sec_name: TEST_SEC_NAME.to_string(),
                 patch_index: 1, // address bytes start at byte 1
-                patch_width: 2,
             }),
             sm83::INSTR_JP_IF_C.op_code,
         ),
@@ -260,7 +254,6 @@ fn test_ld_ok() -> Result<(), String> {
                 reference: Ref::Absolute(Label::from_string("forward".to_string())),
                 sec_name: TEST_SEC_NAME.to_string(),
                 patch_index: 1,
-                patch_width: 2,
             }),
             3,
             INSTR_LD_TO_HL_FROM_LABEL.op_code,
@@ -273,7 +266,6 @@ fn test_ld_ok() -> Result<(), String> {
                 reference: Ref::Absolute(Label::from_string("lbl".to_string())),
                 sec_name: TEST_SEC_NAME.to_string(),
                 patch_index: 1,
-                patch_width: 2,
             }),
             3,
             INSTR_LD_TO_DE_FROM_LABEL.op_code,
@@ -336,7 +328,6 @@ fn test_ld_ok() -> Result<(), String> {
                 reference: Ref::Absolute(Label::from_string("lblX".to_string())),
                 sec_name: TEST_SEC_NAME.to_string(),
                 patch_index: 1,
-                patch_width: 2,
             }),
             3,
             INSTR_LD_TO_A_FROM_DEREF_LABEL.op_code,
@@ -349,7 +340,6 @@ fn test_ld_ok() -> Result<(), String> {
                 reference: Ref::Absolute(Label::from_string("lbl".to_string())),
                 sec_name: TEST_SEC_NAME.to_string(),
                 patch_index: 1,
-                patch_width: 2,
             }),
             3,
             INSTR_LD_TO_DEREF_LABEL_FROM_A.op_code,
@@ -522,6 +512,75 @@ fn test_label() -> Result<(), String> {
     Ok(())
 }
 
+#[test]
+fn test_resolve_label() -> Result<(), String> {
+    let test_label = Label::from_string("lbl".to_string());
+
+    let cases = [
+        (
+            "jump maximum back",
+            LabelRef {
+                reference: Ref::Relative(TEST_SEC_ADDR, test_label.clone(), check_jr_jump),
+                sec_name: TEST_SEC_NAME.to_string(),
+                patch_index: 1,
+            },
+            Address(TEST_SEC_ADDR.0 - 126),
+            (-126i32) as u8,
+            0x00,
+        ),
+        (
+            "jump maximum forward",
+            LabelRef {
+                reference: Ref::Relative(TEST_SEC_ADDR, test_label.clone(), check_jr_jump),
+                sec_name: TEST_SEC_NAME.to_string(),
+                patch_index: 1,
+            },
+            Address(TEST_SEC_ADDR.0 + 127),
+            127,
+            0x00,
+        ),
+        (
+            "absolute jump",
+            LabelRef {
+                reference: Ref::Absolute(test_label.clone()),
+                sec_name: TEST_SEC_NAME.to_string(),
+                patch_index: 1,
+            },
+            Address(0x5001),
+            0x01,
+            0x50,
+        ),
+    ];
+    for (test, label_ref, label_address, mem_1, mem_2) in cases {
+        let patch_ix = label_ref.patch_index;
+        let mut label_refs = Vec::new();
+        label_refs.push(label_ref);
+
+        let mut state = test_state();
+        state
+            .label_addresses
+            .insert(test_label.clone(), label_address);
+
+        resolve_labels(&label_refs, &mut state)?;
+
+        let sec = state.lookup_section(&TEST_SEC_NAME).expect("test sec");
+        assert_eq!(
+            sec.memory.mem[patch_ix], mem_1,
+            "mem_1 was {:x}, expected {:x}, test: {}",
+            sec.memory.mem[patch_ix], mem_1, test,
+        );
+        assert_eq!(
+            sec.memory.mem[patch_ix + 1],
+            mem_2,
+            "mem_2 was {:x}, expected {:x}, test: {}",
+            sec.memory.mem[patch_ix + 1],
+            mem_2,
+            test,
+        );
+    }
+    Ok(())
+}
+
 // helper
 
 static TEST_SEC_NAME: &'static str = "test-section";
@@ -535,7 +594,6 @@ fn assert_eq_label_ref(got: Option<LabelRef>, expect: Option<LabelRef>) {
         assert_eq_ref(&got_ref.reference, &expect_ref.reference);
         assert_eq!(got_ref.sec_name, expect_ref.sec_name, "sec_name");
         assert_eq!(got_ref.patch_index, expect_ref.patch_index, "patch_index");
-        assert_eq!(got_ref.patch_width, expect_ref.patch_width, "patch_width");
     }
 }
 

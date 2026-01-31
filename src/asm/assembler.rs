@@ -70,7 +70,6 @@ struct LabelRef {
     reference: Ref,
     sec_name: String,
     patch_index: usize,
-    patch_width: usize, // in bytes
 }
 
 impl State {
@@ -212,41 +211,31 @@ fn define_label(state: &mut State, label: Label) -> Result<(), String> {
 
 fn resolve_labels(label_refs: &Vec<LabelRef>, state: &mut State) -> Result<(), String> {
     for label_ref in label_refs {
-        let address = match &label_ref.reference {
+        match &label_ref.reference {
             Ref::Relative(relative_from, label, check) => {
                 let lbl_address = expect_label_address(state, &label)?;
-                let dist = (lbl_address as i32 - relative_from.0 as i32) / 8;
+                let dist = lbl_address as i32 - relative_from.0 as i32;
                 (check)(dist)?;
-                dist
+                let sec = state
+                    .lookup_section_mut(&label_ref.sec_name)
+                    .expect("source section not found");
+                sec.memory.mem[label_ref.patch_index] = dist as u8;
             }
             Ref::Absolute(label) => {
-                let lbl_address = expect_label_address(state, &label)?;
-                check_16_bit_address_range(lbl_address as i32)?;
-                lbl_address as i32
+                let label_address = expect_label_address(state, &label)?;
+                check_16_bit_address_range(label_address as i32)?;
+                let bytes = label_address.to_le_bytes();
+                let sec = state
+                    .lookup_section_mut(&label_ref.sec_name)
+                    .expect("source section not found");
+                sec.memory.mem[label_ref.patch_index] = bytes[0];
+                sec.memory.mem[label_ref.patch_index + 1] = bytes[1];
             }
             Ref::Arithmetic(form) => {
                 // TODO check computed address not ouf of address space and valid
                 todo!("not yet implemented")
             }
         };
-
-        let sec = state
-            .lookup_section_mut(&label_ref.sec_name)
-            .expect("source section not found");
-        match label_ref.patch_width {
-            1 => sec.memory.mem[label_ref.patch_index] = address as u8,
-            2 => {
-                let bytes = address.to_le_bytes();
-                sec.memory.mem[label_ref.patch_index] = bytes[0];
-                sec.memory.mem[label_ref.patch_index + 1] = bytes[1];
-            }
-            _ => {
-                return Err(format!(
-                    "unsupported patch_width: {}",
-                    label_ref.patch_width
-                ));
-            }
-        }
     }
     Ok(())
 }
@@ -435,7 +424,6 @@ fn ld(state: &mut State, form: &Form) -> Result<Option<LabelRef>, String> {
                 reference: Ref::Absolute(lbl.clone()),
                 sec_name: sec.name.clone(),
                 patch_index: sec.memory.mem_ptr - 2,
-                patch_width: 2,
             }))
         }
         (SExp::Symbol(Symbol::Reg(reg)), SExp::Immediate(im_value)) => {
@@ -474,7 +462,6 @@ fn ld(state: &mut State, form: &Form) -> Result<Option<LabelRef>, String> {
                     reference: Ref::Absolute(form_label.clone()),
                     sec_name: sec.name.clone(),
                     patch_index: sec.memory.mem_ptr - 2,
-                    patch_width: 2,
                 }))
             } else {
                 let src_reg = expect_deref_reg(&form)?;
@@ -534,7 +521,6 @@ fn ld(state: &mut State, form: &Form) -> Result<Option<LabelRef>, String> {
                     reference: Ref::Absolute(form_label.clone()),
                     sec_name: sec.name.clone(),
                     patch_index: sec.memory.mem_ptr - 2,
-                    patch_width: 2,
                 }))
             } else {
                 let dst_reg = expect_deref_reg(&form)?;
@@ -586,7 +572,6 @@ fn jp(state: &mut State, form: &Form) -> Result<Option<LabelRef>, String> {
         reference: Ref::Absolute(lbl.clone()),
         sec_name: sec.name.clone(),
         patch_index: sec.memory.mem_ptr - 2,
-        patch_width: 2,
     }))
 }
 
@@ -642,7 +627,6 @@ fn jr(state: &mut State, form: &Form) -> Result<Option<LabelRef>, String> {
         reference: Ref::Relative(curr_address, lbl.clone(), check_jr_jump),
         sec_name: sec.name.clone(),
         patch_index: sec.memory.mem_ptr - 1,
-        patch_width: 1,
     }))
 }
 
