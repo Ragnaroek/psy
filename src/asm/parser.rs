@@ -13,6 +13,10 @@ impl Label {
         Label(str)
     }
 
+    pub fn from_str(str: &str) -> Label {
+        Label(str.to_string())
+    }
+
     pub fn name(&self) -> &str {
         &self.0
     }
@@ -190,7 +194,7 @@ fn parse_symbol(chars: &mut Peekable<Chars>) -> Result<Symbol, String> {
 }
 
 fn is_sym_char(ch: char) -> bool {
-    ch.is_alphanumeric() || ch == '-'
+    ch.is_alphanumeric() || ch == '-' || ch == '+'
 }
 
 #[derive(PartialEq)]

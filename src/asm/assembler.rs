@@ -9,6 +9,7 @@ use crate::arch::sm83::{
     INSTR_LD_TO_DEREF_DE_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE,
     INSTR_LD_TO_DEREF_LABEL_FROM_A, INSTR_LD_TO_HL_FROM_IMMEDIATE, INSTR_LD_TO_HL_FROM_LABEL,
 };
+use crate::asm::interpreter::eval_aar;
 use crate::asm::parser::{Address, Form, Label, SExp, Symbol, TopLevel, parse_from_file};
 use std::collections::HashMap;
 use std::fs::File;
@@ -61,8 +62,18 @@ type RefCheck = fn(i32) -> Result<(), String>;
 #[derive(Debug)]
 enum Ref {
     Relative(Address, Label, RefCheck),
-    Absolute(Label),
-    Arithmetic(Form),
+    Expression(SExp),
+}
+
+impl Ref {
+    /// Creates a Ref::Expression from a label.
+    fn from_label(label: Label) -> Ref {
+        Ref::Expression(SExp::Symbol(Symbol::Label(label)))
+    }
+
+    fn from_form(form: Form) -> Ref {
+        Ref::Expression(SExp::Form(form))
+    }
 }
 
 #[derive(Debug)]
@@ -141,7 +152,7 @@ fn state_to_flat(state: &mut State, out: &Path) -> Result<(), String> {
 fn assemble_in_state(pasm: TopLevel, state: &mut State) -> Result<(), String> {
     let mut label_refs: Vec<LabelRef> = Vec::new();
 
-    for form in &pasm.forms {
+    for form in pasm.forms {
         // define the label with an adress if the form is labeled
         if let Some(lbl) = &form.label {
             define_label(state, lbl.clone())?;
@@ -192,7 +203,7 @@ fn assemble_in_state(pasm: TopLevel, state: &mut State) -> Result<(), String> {
         }
     }
 
-    resolve_labels(&label_refs, state)?;
+    resolve_labels(label_refs, state)?;
 
     Ok(())
 }
@@ -209,38 +220,43 @@ fn define_label(state: &mut State, label: Label) -> Result<(), String> {
     Ok(())
 }
 
-fn resolve_labels(label_refs: &Vec<LabelRef>, state: &mut State) -> Result<(), String> {
+fn resolve_labels(label_refs: Vec<LabelRef>, state: &mut State) -> Result<(), String> {
     for label_ref in label_refs {
         match &label_ref.reference {
             Ref::Relative(relative_from, label, check) => {
                 let lbl_address = expect_label_address(state, &label)?;
-                let dist = lbl_address as i32 - relative_from.0 as i32;
+                let dist = lbl_address.0 as i32 - relative_from.0 as i32;
                 (check)(dist)?;
                 let sec = state
                     .lookup_section_mut(&label_ref.sec_name)
                     .expect("source section not found");
                 sec.memory.mem[label_ref.patch_index] = dist as u8;
             }
-            Ref::Absolute(label) => {
-                let label_address = expect_label_address(state, &label)?;
-                check_16_bit_address_range(label_address as i32)?;
-                let bytes = label_address.to_le_bytes();
-                let sec = state
-                    .lookup_section_mut(&label_ref.sec_name)
-                    .expect("source section not found");
-                sec.memory.mem[label_ref.patch_index] = bytes[0];
-                sec.memory.mem[label_ref.patch_index + 1] = bytes[1];
-            }
-            Ref::Arithmetic(form) => {
-                // TODO check computed address not ouf of address space and valid
-                todo!("not yet implemented")
+            Ref::Expression(sexp) => {
+                let address = eval_aar(sexp, &state.label_addresses)?;
+                check_and_write_address(state, &label_ref, address)?;
             }
         };
     }
     Ok(())
 }
 
-fn include(state: &mut State, form: &Form) -> Result<Option<LabelRef>, String> {
+fn check_and_write_address(
+    state: &mut State,
+    label_ref: &LabelRef,
+    label_address: Address,
+) -> Result<(), String> {
+    check_16_bit_address_range(label_address.0 as i32)?;
+    let bytes = (label_address.0 as u16).to_le_bytes();
+    let sec = state
+        .lookup_section_mut(&label_ref.sec_name)
+        .expect("source section not found");
+    sec.memory.mem[label_ref.patch_index] = bytes[0];
+    sec.memory.mem[label_ref.patch_index + 1] = bytes[1];
+    Ok(())
+}
+
+fn include(state: &mut State, form: Form) -> Result<Option<LabelRef>, String> {
     if form.exps.len() < 2 {
         return Err("include must at least provide file to include".to_string());
     }
@@ -261,7 +277,7 @@ fn include(state: &mut State, form: &Form) -> Result<Option<LabelRef>, String> {
     Ok(None)
 }
 
-fn def_section(state: &mut State, form: &Form) -> Result<Option<LabelRef>, String> {
+fn def_section(state: &mut State, form: Form) -> Result<Option<LabelRef>, String> {
     if form.exps.len() == 0 {
         return Err("illegal def-section".to_string());
     }
@@ -305,7 +321,7 @@ fn def_section(state: &mut State, form: &Form) -> Result<Option<LabelRef>, Strin
     Ok(None)
 }
 
-fn section(state: &mut State, form: &Form) -> Result<Option<LabelRef>, String> {
+fn section(state: &mut State, form: Form) -> Result<Option<LabelRef>, String> {
     if form.exps.len() != 1 {
         return Err("illegal section".to_string());
     }
@@ -323,7 +339,7 @@ fn section(state: &mut State, form: &Form) -> Result<Option<LabelRef>, String> {
     }
 }
 
-fn db(state: &mut State, db: &Form) -> Result<Option<LabelRef>, String> {
+fn db(state: &mut State, db: Form) -> Result<Option<LabelRef>, String> {
     expect_in_section(state)?;
     if !db.exps.is_empty() {
         state
@@ -340,7 +356,7 @@ fn db(state: &mut State, db: &Form) -> Result<Option<LabelRef>, String> {
     Ok(None)
 }
 
-fn ds(state: &mut State, ds: &Form) -> Result<Option<LabelRef>, String> {
+fn ds(state: &mut State, ds: Form) -> Result<Option<LabelRef>, String> {
     expect_in_section(state)?;
 
     if ds.exps.is_empty() {
@@ -357,7 +373,7 @@ fn ds(state: &mut State, ds: &Form) -> Result<Option<LabelRef>, String> {
     Ok(None)
 }
 
-fn label(state: &mut State, form: &Form) -> Result<Option<LabelRef>, String> {
+fn label(state: &mut State, form: Form) -> Result<Option<LabelRef>, String> {
     if form.exps.len() < 1 {
         return Err("label: needs at one argument".to_string());
     }
@@ -378,7 +394,7 @@ fn sub_section(state: &mut State) -> Result<Option<LabelRef>, String> {
 
 // non-primitive forms, temporarily implemented in Rust directly
 
-fn cp(state: &mut State, form: &Form) -> Result<Option<LabelRef>, String> {
+fn cp(state: &mut State, form: Form) -> Result<Option<LabelRef>, String> {
     if form.exps.len() < 1 {
         return Err(format!("cp: needs exactly one argument"));
     }
@@ -403,11 +419,13 @@ fn nop(state: &mut State) -> Result<Option<LabelRef>, String> {
     Ok(None)
 }
 
-fn ld(state: &mut State, form: &Form) -> Result<Option<LabelRef>, String> {
+fn ld(state: &mut State, mut form: Form) -> Result<Option<LabelRef>, String> {
     if form.exps.len() < 2 {
         return Err(format!("ld: needs at least two arguments"));
     }
-    match (&form.exps[0], &form.exps[1]) {
+    let exp_1 = form.exps.pop().unwrap();
+    let exp_0 = form.exps.pop().unwrap();
+    match (exp_0, exp_1) {
         (SExp::Symbol(Symbol::Reg(reg)), SExp::Symbol(Symbol::Label(lbl))) => {
             let op = match reg.as_str() {
                 sm83::REG_HL => INSTR_LD_TO_HL_FROM_LABEL.op_code,
@@ -421,7 +439,7 @@ fn ld(state: &mut State, form: &Form) -> Result<Option<LabelRef>, String> {
             sec.memory.push_u8(op);
             sec.memory.push_u16(0);
             Ok(Some(LabelRef {
-                reference: Ref::Absolute(lbl.clone()),
+                reference: Ref::from_label(lbl),
                 sec_name: sec.name.clone(),
                 patch_index: sec.memory.mem_ptr - 2,
             }))
@@ -439,30 +457,39 @@ fn ld(state: &mut State, form: &Form) -> Result<Option<LabelRef>, String> {
             // TODO check range of immediate value!
             let sec = expect_in_w_sec(state)?;
             sec.memory.push_u8(op);
-            sec.memory.push_u8(*im_value as u8);
+            sec.memory.push_u8(im_value as u8);
             Ok(None)
         }
         (SExp::Symbol(Symbol::Reg(dst_reg)), SExp::Form(form)) => {
             if let Symbol::Sym(sym) = &form.op {
-                if sym != "" || form.label.is_none() {
-                    return Err("ld: illegal source label deref".to_string());
-                }
-
+                // deref from label
                 let op = match dst_reg.as_str() {
                     sm83::REG_A => INSTR_LD_TO_A_FROM_DEREF_LABEL.op_code,
                     _ => return Err("ld: illegal dest reg in label deref".to_string()),
                 };
 
                 state.current_section_address.add_bytes(3);
-                let form_label = form.label.as_ref().expect("form label");
+
                 let sec = expect_in_w_sec(state)?;
                 sec.memory.push_u8(op);
                 sec.memory.push_u16(0);
-                Ok(Some(LabelRef {
-                    reference: Ref::Absolute(form_label.clone()),
-                    sec_name: sec.name.clone(),
-                    patch_index: sec.memory.mem_ptr - 2,
-                }))
+
+                let label_ref = if sym == "" && form.label.is_some() {
+                    let form_label = form.label.expect("form label");
+                    LabelRef {
+                        reference: Ref::from_label(form_label),
+                        sec_name: sec.name.clone(),
+                        patch_index: sec.memory.mem_ptr - 2,
+                    }
+                } else {
+                    LabelRef {
+                        reference: Ref::from_form(form),
+                        sec_name: sec.name.clone(),
+                        patch_index: sec.memory.mem_ptr - 2,
+                    }
+                };
+
+                Ok(Some(label_ref))
             } else {
                 let src_reg = expect_deref_reg(&form)?;
                 let op = match (dst_reg.as_str(), src_reg) {
@@ -496,7 +523,7 @@ fn ld(state: &mut State, form: &Form) -> Result<Option<LabelRef>, String> {
             // TODO check range of immediate value!
             let sec = expect_in_w_sec(state)?;
             sec.memory.push_u8(op);
-            sec.memory.push_u8(*im_value as u8);
+            sec.memory.push_u8(im_value as u8);
 
             Ok(None)
         }
@@ -512,13 +539,13 @@ fn ld(state: &mut State, form: &Form) -> Result<Option<LabelRef>, String> {
                 };
 
                 state.current_section_address.add_bytes(3);
-                let form_label = form.label.as_ref().expect("form label");
+                let form_label = form.label.expect("form label");
 
                 let sec = expect_in_w_sec(state)?;
                 sec.memory.push_u8(op);
                 sec.memory.push_u16(0);
                 Ok(Some(LabelRef {
-                    reference: Ref::Absolute(form_label.clone()),
+                    reference: Ref::from_label(form_label),
                     sec_name: sec.name.clone(),
                     patch_index: sec.memory.mem_ptr - 2,
                 }))
@@ -548,7 +575,7 @@ fn expect_deref_reg(form: &Form) -> Result<&str, String> {
     Ok(dst_reg.as_str())
 }
 
-fn jp(state: &mut State, form: &Form) -> Result<Option<LabelRef>, String> {
+fn jp(state: &mut State, form: Form) -> Result<Option<LabelRef>, String> {
     if form.exps.is_empty() {
         return Err("jp: needs at least one argument".to_string());
     }
@@ -569,7 +596,7 @@ fn jp(state: &mut State, form: &Form) -> Result<Option<LabelRef>, String> {
     let sec = expect_in_w_sec(state)?;
     write_jp_instr(sec, flag_name, 0)?;
     Ok(Some(LabelRef {
-        reference: Ref::Absolute(lbl.clone()),
+        reference: Ref::from_label(lbl),
         sec_name: sec.name.clone(),
         patch_index: sec.memory.mem_ptr - 2,
     }))
@@ -602,7 +629,7 @@ fn check_16_bit_address_range(dist: i32) -> Result<(), String> {
 }
 
 /// jump relative
-fn jr(state: &mut State, form: &Form) -> Result<Option<LabelRef>, String> {
+fn jr(state: &mut State, form: Form) -> Result<Option<LabelRef>, String> {
     if form.exps.is_empty() {
         return Err("jr: needs at least one argument".to_string());
     }
@@ -653,7 +680,7 @@ fn check_jr_jump(rel_dist: i32) -> Result<(), String> {
     Ok(())
 }
 
-fn inc(state: &mut State, form: &Form) -> Result<Option<LabelRef>, String> {
+fn inc(state: &mut State, form: Form) -> Result<Option<LabelRef>, String> {
     if form.exps.len() != 1 {
         return Err("inc: needs exactly one argument".to_string());
     }
@@ -677,7 +704,7 @@ fn inc(state: &mut State, form: &Form) -> Result<Option<LabelRef>, String> {
     Ok(None)
 }
 
-fn dec(state: &mut State, form: &Form) -> Result<Option<LabelRef>, String> {
+fn dec(state: &mut State, form: Form) -> Result<Option<LabelRef>, String> {
     if form.exps.len() != 1 {
         return Err("dec: needs exactly one argument".to_string());
     }
@@ -711,9 +738,9 @@ fn sym_false() -> Symbol {
     Symbol::Sym(FALSE_SYM_NAME.to_string())
 }
 
-fn expect_label_address(state: &State, lbl: &Label) -> Result<u16, String> {
+fn expect_label_address(state: &State, lbl: &Label) -> Result<Address, String> {
     if let Some(address) = state.label_addresses.get(&lbl) {
-        Ok(address.0 as u16)
+        Ok(*address)
     } else {
         Err(format!("no address for label '{}", lbl.name()))
     }

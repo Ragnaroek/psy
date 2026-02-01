@@ -107,6 +107,7 @@ fn test_parse_symbol() -> Result<(), String> {
         (")", Symbol::Sym("".to_string())),
         ("a", Symbol::Sym("a".to_string())),
         ("a)", Symbol::Sym("a".to_string())), // test symbol boundaries
+        ("+", Symbol::Sym("+".to_string())),
     ];
 
     for (exp, symbol) in cases {

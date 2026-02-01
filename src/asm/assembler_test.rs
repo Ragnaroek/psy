@@ -18,9 +18,9 @@ fn test_ds_ok() -> Result<(), String> {
 
     for (exp, mem_ptr) in cases {
         let mut state = test_state();
-        let tl = parse_from_string(exp)?;
+        let mut tl = parse_from_string(exp)?;
 
-        ds(&mut state, &tl.forms[0])?;
+        ds(&mut state, tl.forms.pop().unwrap())?;
 
         let sec = state.lookup_section(&TEST_SEC_NAME).expect("test sec");
         assert_eq!(sec.memory.mem_ptr, mem_ptr);
@@ -43,14 +43,14 @@ fn test_jr_fails() -> Result<(), String> {
 
     for (exp, lbl_address, err) in cases {
         let mut state = test_state();
-        let tl = parse_from_string(exp)?;
+        let mut tl = parse_from_string(exp)?;
 
         if !tl.forms[0].exps.is_empty() {
             let lbl = expect_label_name(&tl.forms[0].exps[tl.forms[0].exps.len() - 1])?;
             state.label_addresses.insert(lbl, lbl_address);
         }
 
-        let r = jr(&mut state, &tl.forms[0]);
+        let r = jr(&mut state, tl.forms.pop().unwrap());
 
         assert!(
             r.is_err(),
@@ -126,9 +126,9 @@ fn test_jr_ok() -> Result<(), String> {
 
     for (exp, expect_label_ref, op_code) in cases {
         let mut state = test_state();
-        let tl = parse_from_string(exp)?;
+        let mut tl = parse_from_string(exp)?;
 
-        let got_label_ref = jr(&mut state, &tl.forms[0])?;
+        let got_label_ref = jr(&mut state, tl.forms.pop().unwrap())?;
 
         assert_eq_label_ref(got_label_ref, expect_label_ref);
 
@@ -157,9 +157,9 @@ fn test_jp_fails() -> Result<(), String> {
 
     for (exp, err) in cases {
         let mut state = test_state();
-        let tl = parse_from_string(exp)?;
+        let mut tl = parse_from_string(exp)?;
 
-        let r = jp(&mut state, &tl.forms[0]);
+        let r = jp(&mut state, tl.forms.pop().unwrap());
 
         assert!(
             r.is_err(),
@@ -178,7 +178,7 @@ fn test_jp_ok() -> Result<(), String> {
         (
             "(jp 'forward)",
             Some(LabelRef {
-                reference: Ref::Absolute(Label::from_string("forward".to_string())),
+                reference: Ref::from_label(Label::from_string("forward".to_string())),
                 sec_name: TEST_SEC_NAME.to_string(),
                 patch_index: 1, // address bytes start at byte 1
             }),
@@ -188,7 +188,7 @@ fn test_jp_ok() -> Result<(), String> {
         (
             "(jp #c 'wait)",
             Some(LabelRef {
-                reference: Ref::Absolute(Label::from_string("wait".to_string())),
+                reference: Ref::from_label(Label::from_string("wait".to_string())),
                 sec_name: TEST_SEC_NAME.to_string(),
                 patch_index: 1, // address bytes start at byte 1
             }),
@@ -198,9 +198,9 @@ fn test_jp_ok() -> Result<(), String> {
 
     for (exp, expect_label_ref, op_code) in cases {
         let mut state = test_state();
-        let tl = parse_from_string(exp)?;
+        let mut tl = parse_from_string(exp)?;
 
-        let got_label_ref = jp(&mut state, &tl.forms[0])?;
+        let got_label_ref = jp(&mut state, tl.forms.pop().unwrap())?;
 
         assert_eq_label_ref(got_label_ref, expect_label_ref);
 
@@ -230,14 +230,14 @@ fn test_ld_fails() -> Result<(), String> {
 
     for (exp, lbl_address, err) in cases {
         let mut state = test_state();
-        let tl = parse_from_string(exp)?;
+        let mut tl = parse_from_string(exp)?;
 
         if !tl.forms[0].exps.is_empty() {
             let lbl = expect_label_name(&tl.forms[0].exps[tl.forms[0].exps.len() - 1])?;
             state.label_addresses.insert(lbl, lbl_address);
         }
 
-        let r = ld(&mut state, &tl.forms[0]);
+        let r = ld(&mut state, tl.forms.pop().unwrap());
 
         assert_eq!(r.unwrap_err(), err);
     }
@@ -251,7 +251,7 @@ fn test_ld_ok() -> Result<(), String> {
         (
             "(ld %hl 'forward)",
             Some(LabelRef {
-                reference: Ref::Absolute(Label::from_string("forward".to_string())),
+                reference: Ref::from_label(Label::from_string("forward".to_string())),
                 sec_name: TEST_SEC_NAME.to_string(),
                 patch_index: 1,
             }),
@@ -263,7 +263,7 @@ fn test_ld_ok() -> Result<(), String> {
         (
             "(ld %de 'lbl)",
             Some(LabelRef {
-                reference: Ref::Absolute(Label::from_string("lbl".to_string())),
+                reference: Ref::from_label(Label::from_string("lbl".to_string())),
                 sec_name: TEST_SEC_NAME.to_string(),
                 patch_index: 1,
             }),
@@ -325,7 +325,7 @@ fn test_ld_ok() -> Result<(), String> {
         (
             "(ld %a ('lblX))",
             Some(LabelRef {
-                reference: Ref::Absolute(Label::from_string("lblX".to_string())),
+                reference: Ref::from_label(Label::from_string("lblX".to_string())),
                 sec_name: TEST_SEC_NAME.to_string(),
                 patch_index: 1,
             }),
@@ -337,7 +337,7 @@ fn test_ld_ok() -> Result<(), String> {
         (
             "(ld ('lbl) %a",
             Some(LabelRef {
-                reference: Ref::Absolute(Label::from_string("lbl".to_string())),
+                reference: Ref::from_label(Label::from_string("lbl".to_string())),
                 sec_name: TEST_SEC_NAME.to_string(),
                 patch_index: 1,
             }),
@@ -350,9 +350,9 @@ fn test_ld_ok() -> Result<(), String> {
 
     for (exp, expect_label_ref, byte_size, op_code, inst1, inst2) in cases {
         let mut state = test_state();
-        let tl = parse_from_string(exp)?;
+        let mut tl = parse_from_string(exp)?;
 
-        let got_label_ref = ld(&mut state, &tl.forms[0])?;
+        let got_label_ref = ld(&mut state, tl.forms.pop().unwrap())?;
 
         assert_eq_label_ref(got_label_ref, expect_label_ref);
 
@@ -387,9 +387,9 @@ fn test_inc_fails() -> Result<(), String> {
 
     for (exp, err) in cases {
         let mut state = test_state();
-        let tl = parse_from_string(exp)?;
+        let mut tl = parse_from_string(exp)?;
 
-        let r = inc(&mut state, &tl.forms[0]);
+        let r = inc(&mut state, tl.forms.pop().unwrap());
 
         assert_eq!(r.unwrap_err(), err);
     }
@@ -405,8 +405,8 @@ fn test_inc_ok() -> Result<(), String> {
     ];
     for (exp, byte_size, op) in cases {
         let mut state = test_state();
-        let tl = parse_from_string(exp)?;
-        inc(&mut state, &tl.forms[0])?;
+        let mut tl = parse_from_string(exp)?;
+        inc(&mut state, tl.forms.pop().unwrap())?;
 
         let sec = state.lookup_section(&TEST_SEC_NAME).expect("test sec");
         assert_eq!(sec.memory.mem[0], op, "inc expression={:?}", exp);
@@ -425,9 +425,9 @@ fn test_dec_fails() -> Result<(), String> {
 
     for (exp, err) in cases {
         let mut state = test_state();
-        let tl = parse_from_string(exp)?;
+        let mut tl = parse_from_string(exp)?;
 
-        let r = dec(&mut state, &tl.forms[0]);
+        let r = dec(&mut state, tl.forms.pop().unwrap());
 
         assert_eq!(r.unwrap_err(), err);
     }
@@ -444,8 +444,8 @@ fn test_dec_ok() -> Result<(), String> {
     ];
     for (exp, byte_size, op) in cases {
         let mut state = test_state();
-        let tl = parse_from_string(exp)?;
-        dec(&mut state, &tl.forms[0])?;
+        let mut tl = parse_from_string(exp)?;
+        dec(&mut state, tl.forms.pop().unwrap())?;
 
         let sec = state.lookup_section(&TEST_SEC_NAME).expect("test sec");
         assert_eq!(sec.memory.mem[0], op, "dec expression={:?}", exp);
@@ -461,9 +461,8 @@ fn test_cp_fails() -> Result<(), String> {
 
     for (exp, err) in cases {
         let mut state = test_state();
-        let tl = parse_from_string(exp)?;
-
-        let r = cp(&mut state, &tl.forms[0]);
+        let mut tl = parse_from_string(exp)?;
+        let r = cp(&mut state, tl.forms.pop().unwrap());
 
         assert!(
             r.is_err(),
@@ -481,8 +480,8 @@ fn test_cp_ok() -> Result<(), String> {
     let cases = [("(cp 144)", 2, INSTR_CP_IMMEDIATE.op_code, 144)];
     for (exp, byte_size, op, arg1) in cases {
         let mut state = test_state();
-        let tl = parse_from_string(exp)?;
-        cp(&mut state, &tl.forms[0])?;
+        let mut tl = parse_from_string(exp)?;
+        cp(&mut state, tl.forms.pop().unwrap())?;
 
         let sec = state.lookup_section(&TEST_SEC_NAME).expect("test sec");
         assert_eq!(sec.memory.mem[0], op, "cp expression={:?}", exp);
@@ -545,7 +544,7 @@ fn test_resolve_label_fails() -> Result<(), String> {
             .label_addresses
             .insert(test_label.clone(), label_address);
 
-        let r = resolve_labels(&label_refs, &mut state);
+        let r = resolve_labels(label_refs, &mut state);
 
         assert!(r.is_err(), "expected error '{}'", err);
         assert_eq!(r.unwrap_err(), err);
@@ -584,13 +583,25 @@ fn test_resolve_label_ok() -> Result<(), String> {
         (
             "absolute jump",
             LabelRef {
-                reference: Ref::Absolute(test_label.clone()),
+                reference: Ref::from_label(test_label.clone()),
                 sec_name: TEST_SEC_NAME.to_string(),
                 patch_index: 1,
             },
             Address(0x5001),
             0x01,
             0x50,
+        ),
+        (
+            // check ref, Ref::Expression evaluation is tested in interpreter_test.rs
+            "arith address 1",
+            LabelRef {
+                reference: Ref::from_label(test_label.clone()),
+                sec_name: TEST_SEC_NAME.to_string(),
+                patch_index: 1,
+            },
+            Address(0x6754),
+            0x54,
+            0x67,
         ),
     ];
     for (test, label_ref, label_address, mem_1, mem_2) in cases {
@@ -603,7 +614,7 @@ fn test_resolve_label_ok() -> Result<(), String> {
             .label_addresses
             .insert(test_label.clone(), label_address);
 
-        resolve_labels(&label_refs, &mut state)?;
+        resolve_labels(label_refs, &mut state)?;
 
         let sec = state.lookup_section(&TEST_SEC_NAME).expect("test sec");
         assert_eq!(
@@ -641,9 +652,9 @@ fn assert_eq_label_ref(got: Option<LabelRef>, expect: Option<LabelRef>) {
 
 fn assert_eq_ref(got_ref: &Ref, expect_ref: &Ref) {
     match got_ref {
-        Ref::Absolute(got_lbl) => match expect_ref {
-            Ref::Absolute(expect_lbl) => assert_eq!(got_lbl, expect_lbl, "absolute label"),
-            _ => assert!(false, "got Ref::Absolute, expected: {:?}", expect_ref),
+        Ref::Expression(got_exp) => match expect_ref {
+            Ref::Expression(expect_exp) => assert_eq!(got_exp, expect_exp, "Ref::Expression"),
+            _ => assert!(false, "got Ref::Expression, expected {:?}", expect_ref),
         },
         Ref::Relative(got_address, got_label, got_check) => match expect_ref {
             Ref::Relative(expect_address, expect_label, expect_check) => {
@@ -656,7 +667,6 @@ fn assert_eq_ref(got_ref: &Ref, expect_ref: &Ref) {
             }
             _ => assert!(false, "got Ref::Relative, expected: {:?}", expect_ref),
         },
-        _ => assert!(false, "ref check not implemented"),
     }
 }
 

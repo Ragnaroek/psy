@@ -1,4 +1,5 @@
 pub mod assembler;
+mod interpreter;
 mod parser;
 
 use crate::asm;
