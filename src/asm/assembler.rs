@@ -5,8 +5,8 @@ mod assembler_test;
 use crate::arch::sm83::{
     self, INSTR_DEC_A, INSTR_DEC_B, INSTR_DEC_DE, INSTR_DEC_HL, INSTR_INC_A, INSTR_INC_DE,
     INSTR_INC_HL, INSTR_LD_TO_A_FROM_DEREF_HL, INSTR_LD_TO_A_FROM_DEREF_LABEL,
-    INSTR_LD_TO_A_FROM_IMMEDIATE, INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_DE_FROM_LABEL,
-    INSTR_LD_TO_DEREF_DE_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE,
+    INSTR_LD_TO_A_FROM_IMMEDIATE, INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_BC_FROM_LABEL,
+    INSTR_LD_TO_DE_FROM_LABEL, INSTR_LD_TO_DEREF_DE_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE,
     INSTR_LD_TO_DEREF_LABEL_FROM_A, INSTR_LD_TO_HL_FROM_IMMEDIATE, INSTR_LD_TO_HL_FROM_LABEL,
 };
 use crate::asm::interpreter::eval_aar;
@@ -426,11 +426,12 @@ fn ld(state: &mut State, mut form: Form) -> Result<Option<LabelRef>, String> {
     let exp_1 = form.exps.pop().unwrap();
     let exp_0 = form.exps.pop().unwrap();
     match (exp_0, exp_1) {
-        (SExp::Symbol(Symbol::Reg(reg)), SExp::Symbol(Symbol::Label(lbl))) => {
-            let op = match reg.as_str() {
-                sm83::REG_HL => INSTR_LD_TO_HL_FROM_LABEL.op_code,
+        (SExp::Symbol(Symbol::Reg(dst_reg)), SExp::Symbol(Symbol::Label(lbl))) => {
+            let op = match dst_reg.as_str() {
+                sm83::REG_BC => INSTR_LD_TO_BC_FROM_LABEL.op_code,
                 sm83::REG_DE => INSTR_LD_TO_DE_FROM_LABEL.op_code,
-                _ => return Err(format!("ld: unknown target register: {}", reg)),
+                sm83::REG_HL => INSTR_LD_TO_HL_FROM_LABEL.op_code,
+                _ => return Err(format!("ld: unknown target register: {}", dst_reg)),
             };
 
             state.current_section_address.add_bytes(3);
@@ -444,12 +445,12 @@ fn ld(state: &mut State, mut form: Form) -> Result<Option<LabelRef>, String> {
                 patch_index: sec.memory.mem_ptr - 2,
             }))
         }
-        (SExp::Symbol(Symbol::Reg(reg)), SExp::Immediate(im_value)) => {
-            let op = match reg.as_str() {
+        (SExp::Symbol(Symbol::Reg(dst_reg)), SExp::Immediate(im_value)) => {
+            let op = match dst_reg.as_str() {
                 sm83::REG_A => INSTR_LD_TO_A_FROM_IMMEDIATE.op_code,
                 sm83::REG_B => INSTR_LD_TO_B_FROM_IMMEDIATE.op_code,
                 sm83::REG_HL => INSTR_LD_TO_HL_FROM_IMMEDIATE.op_code,
-                _ => return Err(format!("ld: unknown target register: {}", reg)),
+                _ => return Err(format!("ld: unknown target register: {}", dst_reg)),
             };
 
             state.current_section_address.add_bytes(2);
@@ -465,6 +466,7 @@ fn ld(state: &mut State, mut form: Form) -> Result<Option<LabelRef>, String> {
                 // deref from label
                 let op = match dst_reg.as_str() {
                     sm83::REG_A => INSTR_LD_TO_A_FROM_DEREF_LABEL.op_code,
+                    sm83::REG_BC => INSTR_LD_TO_BC_FROM_LABEL.op_code,
                     _ => return Err("ld: illegal dest reg in label deref".to_string()),
                 };
 

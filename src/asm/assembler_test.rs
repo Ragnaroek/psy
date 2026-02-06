@@ -1,16 +1,16 @@
 use crate::arch::sm83::{
     self, INSTR_CP_IMMEDIATE, INSTR_DEC_A, INSTR_DEC_B, INSTR_DEC_DE, INSTR_DEC_HL, INSTR_INC_A,
     INSTR_INC_DE, INSTR_INC_HL, INSTR_LD_TO_A_FROM_DEREF_LABEL, INSTR_LD_TO_A_FROM_IMMEDIATE,
-    INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_DE_FROM_LABEL, INSTR_LD_TO_DEREF_DE_FROM_A,
-    INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE, INSTR_LD_TO_DEREF_LABEL_FROM_A,
-    INSTR_LD_TO_HL_FROM_IMMEDIATE, INSTR_LD_TO_HL_FROM_LABEL,
+    INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_BC_FROM_LABEL, INSTR_LD_TO_DE_FROM_LABEL,
+    INSTR_LD_TO_DEREF_DE_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE,
+    INSTR_LD_TO_DEREF_LABEL_FROM_A, INSTR_LD_TO_HL_FROM_IMMEDIATE, INSTR_LD_TO_HL_FROM_LABEL,
 };
 use crate::asm::assembler::{
-    Label, LabelRef, Memory, Ref, Section, State, assemble_in_state, check_jr_jump, cp, dec, ds,
-    expect_label_name, inc, jp, jr, ld, resolve_labels,
+    Form, Label, LabelRef, Memory, Ref, Section, State, assemble_in_state, check_jr_jump, cp, dec,
+    ds, expect_label_name, inc, jp, jr, ld, resolve_labels,
 };
 
-use crate::asm::parser::{Address, parse_from_string};
+use crate::asm::parser::{Address, SExp, Symbol, parse_from_string};
 
 #[test]
 fn test_ds_ok() -> Result<(), String> {
@@ -261,6 +261,37 @@ fn test_ld_ok() -> Result<(), String> {
             0x00,
         ),
         (
+            "(ld %bc 'lbl)",
+            Some(LabelRef {
+                reference: Ref::from_label(Label::from_string("lbl".to_string())),
+                sec_name: TEST_SEC_NAME.to_string(),
+                patch_index: 1,
+            }),
+            3,
+            INSTR_LD_TO_BC_FROM_LABEL.op_code,
+            0x00,
+            0x00,
+        ),
+        (
+            "(ld %bc (- 'lbl2 'lbl1))",
+            Some(LabelRef {
+                reference: Ref::from_form(Form {
+                    op: Symbol::Sym("-".to_string()),
+                    label: None,
+                    exps: vec![
+                        SExp::Symbol(Symbol::Label(Label::from_str("lbl2"))),
+                        SExp::Symbol(Symbol::Label(Label::from_str("lbl1"))),
+                    ],
+                }),
+                sec_name: TEST_SEC_NAME.to_string(),
+                patch_index: 1,
+            }),
+            3,
+            INSTR_LD_TO_BC_FROM_LABEL.op_code,
+            0x00,
+            0x00,
+        ),
+        (
             "(ld %de 'lbl)",
             Some(LabelRef {
                 reference: Ref::from_label(Label::from_string("lbl".to_string())),
@@ -269,6 +300,18 @@ fn test_ld_ok() -> Result<(), String> {
             }),
             3,
             INSTR_LD_TO_DE_FROM_LABEL.op_code,
+            0x00,
+            0x00,
+        ),
+        (
+            "(ld %hl 'lbl)",
+            Some(LabelRef {
+                reference: Ref::from_label(Label::from_string("lbl".to_string())),
+                sec_name: TEST_SEC_NAME.to_string(),
+                patch_index: 1,
+            }),
+            3,
+            INSTR_LD_TO_HL_FROM_LABEL.op_code,
             0x00,
             0x00,
         ),

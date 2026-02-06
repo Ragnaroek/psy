@@ -8,6 +8,7 @@ pub struct Sm83Instr {
 pub const MAX_INSTRUCTION_BYTE_LENGTH: usize = 3;
 
 pub const REG_HL: &str = "hl";
+pub const REG_BC: &str = "bc";
 pub const REG_DE: &str = "de";
 pub const REG_A: &str = "a";
 pub const REG_B: &str = "b";
@@ -127,6 +128,12 @@ pub static INSTR_LD_TO_HL_FROM_LABEL: Sm83Instr = Sm83Instr {
 pub static INSTR_LD_TO_DE_FROM_LABEL: Sm83Instr = Sm83Instr {
     mnemonic: "LD %de",
     op_code: 0x11,
+    immediate_args: &[],
+    stream_args: 2,
+};
+pub static INSTR_LD_TO_BC_FROM_LABEL: Sm83Instr = Sm83Instr {
+    mnemonic: "LD %bc",
+    op_code: 0x01,
     immediate_args: &[],
     stream_args: 2,
 };

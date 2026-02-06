@@ -24,6 +24,22 @@
 (ld %hl 0x9000)
 (ld %bc (- 'tiles-end 'tiles))
 
+(label 'copy-tiles)
+(ld %a (%de))
+(ld (+ %hl) %a)
+(inc %de)
+(dec %bc)
+(ld %a %b)
+(or %a %c)
+(jp #nz 'copy-tiles)
+
+; Copy the tilemap
+(ld %de 'tilemap)
+(ld %hl 0x9800)
+(ld %bc (- 'tilemap-end - 'tilemap))
+
+; TODO copy-tilemap
+
 (label 'tiles)
 (db 0x00 0xff 0x00 0xff 0x00 0xff 0x00 0xff 0x00 0xff 0x00 0xff 0x00 0xff 0x00 0xff)
 ; TODO define remaining tiles data
