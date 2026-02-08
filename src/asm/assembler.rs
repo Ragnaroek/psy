@@ -4,10 +4,11 @@ mod assembler_test;
 
 use crate::arch::sm83::{
     self, INSTR_DEC_A, INSTR_DEC_B, INSTR_DEC_DE, INSTR_DEC_HL, INSTR_INC_A, INSTR_INC_DE,
-    INSTR_INC_HL, INSTR_LD_TO_A_FROM_DEREF_HL, INSTR_LD_TO_A_FROM_DEREF_LABEL,
-    INSTR_LD_TO_A_FROM_IMMEDIATE, INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_BC_FROM_LABEL,
-    INSTR_LD_TO_DE_FROM_LABEL, INSTR_LD_TO_DEREF_DE_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE,
-    INSTR_LD_TO_DEREF_LABEL_FROM_A, INSTR_LD_TO_HL_FROM_IMMEDIATE, INSTR_LD_TO_HL_FROM_LABEL,
+    INSTR_INC_HL, INSTR_LD_TO_A_FROM_DEREF_DE, INSTR_LD_TO_A_FROM_DEREF_HL,
+    INSTR_LD_TO_A_FROM_DEREF_LABEL, INSTR_LD_TO_A_FROM_IMMEDIATE, INSTR_LD_TO_B_FROM_IMMEDIATE,
+    INSTR_LD_TO_BC_FROM_LABEL, INSTR_LD_TO_DE_FROM_LABEL, INSTR_LD_TO_DEREF_DE_FROM_A,
+    INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE, INSTR_LD_TO_DEREF_LABEL_FROM_A,
+    INSTR_LD_TO_HL_FROM_IMMEDIATE, INSTR_LD_TO_HL_FROM_LABEL,
 };
 use crate::asm::interpreter::eval_aar;
 use crate::asm::parser::{Address, Form, Label, SExp, Symbol, TopLevel, parse_from_file};
@@ -496,6 +497,7 @@ fn ld(state: &mut State, mut form: Form) -> Result<Option<LabelRef>, String> {
                 let src_reg = expect_deref_reg(&form)?;
                 let op = match (dst_reg.as_str(), src_reg) {
                     (sm83::REG_A, sm83::REG_HL) => INSTR_LD_TO_A_FROM_DEREF_HL.op_code,
+                    (sm83::REG_A, sm83::REG_DE) => INSTR_LD_TO_A_FROM_DEREF_DE.op_code,
                     _ => {
                         return Err(format!(
                             "ld: unknown source register: {}, {:?}",
@@ -532,7 +534,7 @@ fn ld(state: &mut State, mut form: Form) -> Result<Option<LabelRef>, String> {
         (SExp::Form(form), SExp::Symbol(Symbol::Reg(src_reg))) => {
             if let Symbol::Sym(sym) = &form.op {
                 if sym != "" || form.label.is_none() {
-                    return Err("ld: illegal dest label deref".to_string());
+                    return Err(format!("ld: illegal dest label deref: {:?}", form));
                 }
 
                 let op = match src_reg.as_str() {

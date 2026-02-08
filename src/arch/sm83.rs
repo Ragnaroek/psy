@@ -183,9 +183,14 @@ pub static INSTR_LD_TO_A_FROM_DEREF_HL: Sm83Instr = Sm83Instr {
     mnemonic: "LD %a (%hl)",
     op_code: 0x7E,
     immediate_args: &[],
-    stream_args: 1,
+    stream_args: 0,
 };
-
+pub static INSTR_LD_TO_A_FROM_DEREF_DE: Sm83Instr = Sm83Instr {
+    mnemonic: "LD %a (%de)",
+    op_code: 0x1A,
+    immediate_args: &[],
+    stream_args: 0,
+};
 // CP
 pub static INSTR_CP_IMMEDIATE: Sm83Instr = Sm83Instr {
     mnemonic: "CP",

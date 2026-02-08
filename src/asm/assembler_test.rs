@@ -1,9 +1,10 @@
 use crate::arch::sm83::{
     self, INSTR_CP_IMMEDIATE, INSTR_DEC_A, INSTR_DEC_B, INSTR_DEC_DE, INSTR_DEC_HL, INSTR_INC_A,
-    INSTR_INC_DE, INSTR_INC_HL, INSTR_LD_TO_A_FROM_DEREF_LABEL, INSTR_LD_TO_A_FROM_IMMEDIATE,
-    INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_BC_FROM_LABEL, INSTR_LD_TO_DE_FROM_LABEL,
-    INSTR_LD_TO_DEREF_DE_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE,
-    INSTR_LD_TO_DEREF_LABEL_FROM_A, INSTR_LD_TO_HL_FROM_IMMEDIATE, INSTR_LD_TO_HL_FROM_LABEL,
+    INSTR_INC_DE, INSTR_INC_HL, INSTR_LD_TO_A_FROM_DEREF_DE, INSTR_LD_TO_A_FROM_DEREF_HL,
+    INSTR_LD_TO_A_FROM_DEREF_LABEL, INSTR_LD_TO_A_FROM_IMMEDIATE, INSTR_LD_TO_B_FROM_IMMEDIATE,
+    INSTR_LD_TO_BC_FROM_LABEL, INSTR_LD_TO_DE_FROM_LABEL, INSTR_LD_TO_DEREF_DE_FROM_A,
+    INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE, INSTR_LD_TO_DEREF_LABEL_FROM_A,
+    INSTR_LD_TO_HL_FROM_IMMEDIATE, INSTR_LD_TO_HL_FROM_LABEL,
 };
 use crate::asm::assembler::{
     Form, Label, LabelRef, Memory, Ref, Section, State, assemble_in_state, check_jr_jump, cp, dec,
@@ -374,6 +375,22 @@ fn test_ld_ok() -> Result<(), String> {
             }),
             3,
             INSTR_LD_TO_A_FROM_DEREF_LABEL.op_code,
+            0x00,
+            0x00,
+        ),
+        (
+            "(ld %a (%hl))",
+            None,
+            1,
+            INSTR_LD_TO_A_FROM_DEREF_HL.op_code,
+            0x00,
+            0x00,
+        ),
+        (
+            "(ld %a (%de))",
+            None,
+            1,
+            INSTR_LD_TO_A_FROM_DEREF_DE.op_code,
             0x00,
             0x00,
         ),
