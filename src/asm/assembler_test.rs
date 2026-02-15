@@ -1,11 +1,11 @@
 use crate::arch::sm83::{
-    self, INSTR_CP_IMMEDIATE, INSTR_DEC_A, INSTR_DEC_B, INSTR_DEC_DE, INSTR_DEC_HL, INSTR_INC_A,
-    INSTR_INC_DE, INSTR_INC_HL, INSTR_LD_TO_A_FROM_DEREF_DE, INSTR_LD_TO_A_FROM_DEREF_HL,
-    INSTR_LD_TO_A_FROM_DEREF_HL_INC, INSTR_LD_TO_A_FROM_DEREF_LABEL, INSTR_LD_TO_A_FROM_IMMEDIATE,
-    INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_BC_FROM_LABEL, INSTR_LD_TO_DE_FROM_LABEL,
-    INSTR_LD_TO_DEREF_DE_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE,
-    INSTR_LD_TO_DEREF_HL_INC_FROM_A, INSTR_LD_TO_DEREF_LABEL_FROM_A, INSTR_LD_TO_HL_FROM_IMMEDIATE,
-    INSTR_LD_TO_HL_FROM_LABEL,
+    self, INSTR_CP_IMMEDIATE, INSTR_DEC_A, INSTR_DEC_B, INSTR_DEC_BC, INSTR_DEC_DE, INSTR_DEC_HL,
+    INSTR_INC_A, INSTR_INC_BC, INSTR_INC_DE, INSTR_INC_HL, INSTR_LD_TO_A_FROM_DEREF_DE,
+    INSTR_LD_TO_A_FROM_DEREF_HL, INSTR_LD_TO_A_FROM_DEREF_HL_INC, INSTR_LD_TO_A_FROM_DEREF_LABEL,
+    INSTR_LD_TO_A_FROM_IMMEDIATE, INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_BC_FROM_LABEL,
+    INSTR_LD_TO_DE_FROM_LABEL, INSTR_LD_TO_DEREF_DE_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_A,
+    INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE, INSTR_LD_TO_DEREF_HL_INC_FROM_A,
+    INSTR_LD_TO_DEREF_LABEL_FROM_A, INSTR_LD_TO_HL_FROM_IMMEDIATE, INSTR_LD_TO_HL_FROM_LABEL,
 };
 use crate::asm::assembler::{
     Form, Label, LabelRef, Memory, Ref, Section, State, assemble_in_state, check_jr_jump, cp, dec,
@@ -485,6 +485,7 @@ fn test_inc_fails() -> Result<(), String> {
 fn test_inc_ok() -> Result<(), String> {
     let cases = [
         ("(inc %a)", 1, INSTR_INC_A.op_code),
+        ("(inc %bc)", 1, INSTR_INC_BC.op_code),
         ("(inc %de)", 1, INSTR_INC_DE.op_code),
         ("(inc %hl)", 1, INSTR_INC_HL.op_code),
     ];
@@ -524,6 +525,7 @@ fn test_dec_ok() -> Result<(), String> {
     let cases = [
         ("(dec %a)", 1, INSTR_DEC_A.op_code),
         ("(dec %b)", 1, INSTR_DEC_B.op_code),
+        ("(dec %bc)", 1, INSTR_DEC_BC.op_code),
         ("(dec %de)", 1, INSTR_DEC_DE.op_code),
         ("(dec %hl)", 1, INSTR_DEC_HL.op_code),
     ];

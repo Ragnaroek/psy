@@ -74,6 +74,13 @@ pub static INSTR_INC_A: Sm83Instr = Sm83Instr {
     stream_args: 0,
 };
 
+pub static INSTR_INC_BC: Sm83Instr = Sm83Instr {
+    mnemonic: "INC %bc",
+    op_code: 0x03,
+    immediate_args: &[],
+    stream_args: 0,
+};
+
 pub static INSTR_INC_DE: Sm83Instr = Sm83Instr {
     mnemonic: "INC %de",
     op_code: 0x13,
@@ -99,6 +106,13 @@ pub static INSTR_DEC_A: Sm83Instr = Sm83Instr {
 pub static INSTR_DEC_B: Sm83Instr = Sm83Instr {
     mnemonic: "DEC %b",
     op_code: 0x05,
+    immediate_args: &[],
+    stream_args: 0,
+};
+
+pub static INSTR_DEC_BC: Sm83Instr = Sm83Instr {
+    mnemonic: "DEC %bc",
+    op_code: 0x0B,
     immediate_args: &[],
     stream_args: 0,
 };

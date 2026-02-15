@@ -3,13 +3,13 @@
 mod assembler_test;
 
 use crate::arch::sm83::{
-    self, INSTR_DEC_A, INSTR_DEC_B, INSTR_DEC_DE, INSTR_DEC_HL, INSTR_INC_A, INSTR_INC_DE,
-    INSTR_INC_HL, INSTR_LD_TO_A_FROM_DEREF_DE, INSTR_LD_TO_A_FROM_DEREF_HL,
-    INSTR_LD_TO_A_FROM_DEREF_HL_INC, INSTR_LD_TO_A_FROM_DEREF_LABEL, INSTR_LD_TO_A_FROM_IMMEDIATE,
-    INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_BC_FROM_LABEL, INSTR_LD_TO_DE_FROM_LABEL,
-    INSTR_LD_TO_DEREF_DE_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE,
-    INSTR_LD_TO_DEREF_HL_INC_FROM_A, INSTR_LD_TO_DEREF_LABEL_FROM_A, INSTR_LD_TO_HL_FROM_IMMEDIATE,
-    INSTR_LD_TO_HL_FROM_LABEL,
+    self, INSTR_DEC_A, INSTR_DEC_B, INSTR_DEC_BC, INSTR_DEC_DE, INSTR_DEC_HL, INSTR_INC_A,
+    INSTR_INC_BC, INSTR_INC_DE, INSTR_INC_HL, INSTR_LD_TO_A_FROM_DEREF_DE,
+    INSTR_LD_TO_A_FROM_DEREF_HL, INSTR_LD_TO_A_FROM_DEREF_HL_INC, INSTR_LD_TO_A_FROM_DEREF_LABEL,
+    INSTR_LD_TO_A_FROM_IMMEDIATE, INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_BC_FROM_LABEL,
+    INSTR_LD_TO_DE_FROM_LABEL, INSTR_LD_TO_DEREF_DE_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_A,
+    INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE, INSTR_LD_TO_DEREF_HL_INC_FROM_A,
+    INSTR_LD_TO_DEREF_LABEL_FROM_A, INSTR_LD_TO_HL_FROM_IMMEDIATE, INSTR_LD_TO_HL_FROM_LABEL,
 };
 use crate::asm::interpreter::eval_aar;
 use crate::asm::parser::{Address, Form, Label, SExp, Symbol, TopLevel, parse_from_file};
@@ -716,6 +716,7 @@ fn inc(state: &mut State, form: Form) -> Result<Option<LabelRef>, String> {
         SExp::Symbol(Symbol::Reg(reg)) => {
             let op = match reg.as_str() {
                 sm83::REG_A => INSTR_INC_A.op_code,
+                sm83::REG_BC => INSTR_INC_BC.op_code,
                 sm83::REG_DE => INSTR_INC_DE.op_code,
                 sm83::REG_HL => INSTR_INC_HL.op_code,
                 illegal_reg => return Err(format!("inc: unknow register: {}", illegal_reg)),
@@ -741,6 +742,7 @@ fn dec(state: &mut State, form: Form) -> Result<Option<LabelRef>, String> {
             let op = match reg.as_str() {
                 sm83::REG_A => INSTR_DEC_A.op_code,
                 sm83::REG_B => INSTR_DEC_B.op_code,
+                sm83::REG_BC => INSTR_DEC_BC.op_code,
                 sm83::REG_DE => INSTR_DEC_DE.op_code,
                 sm83::REG_HL => INSTR_DEC_HL.op_code,
                 illegal_reg => return Err(format!("dec: unknow register: {}", illegal_reg)),
