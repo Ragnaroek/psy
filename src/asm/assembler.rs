@@ -5,10 +5,11 @@ mod assembler_test;
 use crate::arch::sm83::{
     self, INSTR_DEC_A, INSTR_DEC_B, INSTR_DEC_DE, INSTR_DEC_HL, INSTR_INC_A, INSTR_INC_DE,
     INSTR_INC_HL, INSTR_LD_TO_A_FROM_DEREF_DE, INSTR_LD_TO_A_FROM_DEREF_HL,
-    INSTR_LD_TO_A_FROM_DEREF_LABEL, INSTR_LD_TO_A_FROM_IMMEDIATE, INSTR_LD_TO_B_FROM_IMMEDIATE,
-    INSTR_LD_TO_BC_FROM_LABEL, INSTR_LD_TO_DE_FROM_LABEL, INSTR_LD_TO_DEREF_DE_FROM_A,
-    INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE, INSTR_LD_TO_DEREF_LABEL_FROM_A,
-    INSTR_LD_TO_HL_FROM_IMMEDIATE, INSTR_LD_TO_HL_FROM_LABEL,
+    INSTR_LD_TO_A_FROM_DEREF_HL_INC, INSTR_LD_TO_A_FROM_DEREF_LABEL, INSTR_LD_TO_A_FROM_IMMEDIATE,
+    INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_BC_FROM_LABEL, INSTR_LD_TO_DE_FROM_LABEL,
+    INSTR_LD_TO_DEREF_DE_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE,
+    INSTR_LD_TO_DEREF_HL_INC_FROM_A, INSTR_LD_TO_DEREF_LABEL_FROM_A, INSTR_LD_TO_HL_FROM_IMMEDIATE,
+    INSTR_LD_TO_HL_FROM_LABEL,
 };
 use crate::asm::interpreter::eval_aar;
 use crate::asm::parser::{Address, Form, Label, SExp, Symbol, TopLevel, parse_from_file};
@@ -494,10 +495,13 @@ fn ld(state: &mut State, mut form: Form) -> Result<Option<LabelRef>, String> {
 
                 Ok(Some(label_ref))
             } else {
-                let src_reg = expect_deref_reg(&form)?;
-                let op = match (dst_reg.as_str(), src_reg) {
-                    (sm83::REG_A, sm83::REG_HL) => INSTR_LD_TO_A_FROM_DEREF_HL.op_code,
-                    (sm83::REG_A, sm83::REG_DE) => INSTR_LD_TO_A_FROM_DEREF_DE.op_code,
+                let (src_reg, deref_mod) = expect_deref_reg(&form)?;
+                let op = match (dst_reg.as_str(), src_reg, deref_mod) {
+                    (sm83::REG_A, sm83::REG_DE, None) => INSTR_LD_TO_A_FROM_DEREF_DE.op_code,
+                    (sm83::REG_A, sm83::REG_HL, None) => INSTR_LD_TO_A_FROM_DEREF_HL.op_code,
+                    (sm83::REG_A, sm83::REG_HL, Some("+")) => {
+                        INSTR_LD_TO_A_FROM_DEREF_HL_INC.op_code
+                    }
                     _ => {
                         return Err(format!(
                             "ld: unknown source register: {}, {:?}",
@@ -554,9 +558,13 @@ fn ld(state: &mut State, mut form: Form) -> Result<Option<LabelRef>, String> {
                     patch_index: sec.memory.mem_ptr - 2,
                 }))
             } else {
-                let dst_reg = expect_deref_reg(&form)?;
-                let op = match (dst_reg, src_reg.as_str()) {
-                    (sm83::REG_DE, sm83::REG_A) => INSTR_LD_TO_DEREF_DE_FROM_A.op_code,
+                let (dst_reg, deref_mod) = expect_deref_reg(&form)?;
+                let op = match (dst_reg, deref_mod, src_reg.as_str()) {
+                    (sm83::REG_DE, None, sm83::REG_A) => INSTR_LD_TO_DEREF_DE_FROM_A.op_code,
+                    (sm83::REG_HL, None, sm83::REG_A) => INSTR_LD_TO_DEREF_HL_FROM_A.op_code,
+                    (sm83::REG_HL, Some("+"), sm83::REG_A) => {
+                        INSTR_LD_TO_DEREF_HL_INC_FROM_A.op_code
+                    }
                     illegal => return Err(format!("ld: illegal deref from reg: {:?}", illegal)),
                 };
 
@@ -571,12 +579,27 @@ fn ld(state: &mut State, mut form: Form) -> Result<Option<LabelRef>, String> {
     }
 }
 
-fn expect_deref_reg(form: &Form) -> Result<&str, String> {
+fn expect_deref_reg(form: &Form) -> Result<(&str, Option<&str>), String> {
     let dst_reg = match &form.op {
         Symbol::Reg(reg) => reg,
         illegal => return Err(format!("illegal deref: {:?}", illegal)),
     };
-    Ok(dst_reg.as_str())
+
+    if form.exps.len() > 1 {
+        return Err(format!("illegal deref, too many args: {:?}", form));
+    }
+
+    let deref_mod = if form.exps.is_empty() {
+        None
+    } else {
+        let exp = &form.exps[0];
+        Some(match exp {
+            SExp::Symbol(Symbol::Sym(name)) => name.as_str(),
+            illegal => return Err(format!("illegal deref mod: {:?}", illegal)),
+        })
+    };
+
+    Ok((dst_reg.as_str(), deref_mod))
 }
 
 fn jp(state: &mut State, form: Form) -> Result<Option<LabelRef>, String> {

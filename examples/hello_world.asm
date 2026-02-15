@@ -26,7 +26,7 @@
 
 (label 'copy-tiles)
 (ld %a (%de))
-(ld (+ %hl) %a)
+(ld (%hl +) %a)
 (inc %de)
 (dec %bc)
 (ld %a %b)

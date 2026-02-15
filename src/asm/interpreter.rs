@@ -2,7 +2,7 @@
 #[path = "./interpreter_test.rs"]
 mod interpreter_test;
 
-use std::{collections::HashMap, ops::Add};
+use std::collections::HashMap;
 
 use crate::asm::parser::{Address, Form, Label, SExp, Symbol};
 
