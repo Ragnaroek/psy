@@ -107,3 +107,6 @@
 (db) ;0xFF42
 (db) ;0xFF43
 ('hw-ly db) ; 0xFF44
+(db) ;0xFF45
+(db) ;0xFF46
+('hw-bgp db) ;0xFF47

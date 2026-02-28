@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 use crate::asm::parser::{Address, Form, Label, SExp, Symbol};
 
-/// aar = adress_arithmetic
+/// aar = address_arithmetic
 /// only able to to evaluate address arithmetic computation
 pub fn eval_aar(sexp: &SExp, label_addresses: &HashMap<Label, Address>) -> Result<Address, String> {
     match sexp {
