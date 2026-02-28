@@ -197,6 +197,15 @@ fn test_jp_ok() -> Result<(), String> {
             }),
             sm83::INSTR_JP_IF_C.op_code,
         ),
+        (
+            "(jp #nz 'wait)",
+            Some(LabelRef {
+                reference: Ref::from_label(Label::from_string("wait".to_string())),
+                sec_name: TEST_SEC_NAME.to_string(),
+                patch_index: 1, // address bytes start at byte 1
+            }),
+            sm83::INSTR_JP_IF_NZ.op_code,
+        ),
     ];
 
     for (exp, expect_label_ref, op_code) in cases {

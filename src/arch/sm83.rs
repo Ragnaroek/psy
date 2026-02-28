@@ -46,6 +46,12 @@ pub static INSTR_JP_IF_C: Sm83Instr = Sm83Instr {
     immediate_args: &[],
     stream_args: 2,
 };
+pub static INSTR_JP_IF_NZ: Sm83Instr = Sm83Instr {
+    mnemonic: "JP #NZ",
+    op_code: 0xC2,
+    immediate_args: &[],
+    stream_args: 2,
+};
 
 // JR
 pub static INSTR_JR: Sm83Instr = Sm83Instr {

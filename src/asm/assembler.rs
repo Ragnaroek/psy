@@ -681,7 +681,8 @@ fn write_jp_instr(
     let op = match flag_name {
         None => sm83::INSTR_JP.op_code,
         Some(sm83::FLAG_C) => sm83::INSTR_JP_IF_C.op_code,
-        Some(illegal) => return Err(format!("jr: unknown flag '{}'", illegal)),
+        Some(sm83::FLAG_NZ) => sm83::INSTR_JP_IF_NZ.op_code,
+        Some(illegal) => return Err(format!("jp: unknown flag '{}'", illegal)),
     };
 
     sec.memory.push_u8(op);
