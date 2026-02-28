@@ -4,12 +4,13 @@ mod assembler_test;
 
 use crate::arch::sm83::{
     self, INSTR_DEC_A, INSTR_DEC_B, INSTR_DEC_BC, INSTR_DEC_DE, INSTR_DEC_HL, INSTR_INC_A,
-    INSTR_INC_BC, INSTR_INC_DE, INSTR_INC_HL, INSTR_LD_TO_A_FROM_DEREF_DE,
+    INSTR_INC_BC, INSTR_INC_DE, INSTR_INC_HL, INSTR_LD_TO_A_FROM_B, INSTR_LD_TO_A_FROM_DEREF_DE,
     INSTR_LD_TO_A_FROM_DEREF_HL, INSTR_LD_TO_A_FROM_DEREF_HL_INC, INSTR_LD_TO_A_FROM_DEREF_LABEL,
     INSTR_LD_TO_A_FROM_IMMEDIATE, INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_BC_FROM_LABEL,
     INSTR_LD_TO_DE_FROM_LABEL, INSTR_LD_TO_DEREF_DE_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_A,
     INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE, INSTR_LD_TO_DEREF_HL_INC_FROM_A,
     INSTR_LD_TO_DEREF_LABEL_FROM_A, INSTR_LD_TO_HL_FROM_IMMEDIATE, INSTR_LD_TO_HL_FROM_LABEL,
+    INSTR_OR_A_C,
 };
 use crate::asm::interpreter::eval_aar;
 use crate::asm::parser::{Address, Form, Label, SExp, Symbol, TopLevel, parse_from_file};
@@ -191,6 +192,8 @@ fn assemble_in_state(pasm: TopLevel, state: &mut State) -> Result<(), String> {
                     jr(state, form)?
                 } else if sym_name == "cp" {
                     cp(state, form)?
+                } else if sym_name == "or" {
+                    or(state, form)?
                 } else if sym_name == "nop" {
                     nop(state)?
                 } else {
@@ -414,6 +417,29 @@ fn cp(state: &mut State, form: Form) -> Result<Option<LabelRef>, String> {
     Ok(None)
 }
 
+fn or(state: &mut State, form: Form) -> Result<Option<LabelRef>, String> {
+    if form.exps.len() != 2 {
+        return Err(format!("or: needs exactly two arguments"));
+    }
+
+    let exp_0 = &form.exps[0];
+    let exp_1 = &form.exps[1];
+    let op = match (exp_0, exp_1) {
+        (SExp::Symbol(Symbol::Reg(reg_0)), SExp::Symbol(Symbol::Reg(reg_1))) => {
+            match (reg_0.as_str(), reg_1.as_str()) {
+                (sm83::REG_A, sm83::REG_C) => INSTR_OR_A_C.op_code,
+                illegal => return Err(format!("or: illegal registers: {:?}", illegal)),
+            }
+        }
+        (reg_0, reg_1) => return Err(format!("or: illegal parameters: {:?} {:?}", reg_0, reg_1)),
+    };
+
+    state.current_section_address.add_bytes(1);
+    let sec = expect_in_w_sec(state)?;
+    sec.memory.push_u8(op);
+    Ok(None)
+}
+
 fn nop(state: &mut State) -> Result<Option<LabelRef>, String> {
     state.current_section_address.add_bytes(1);
     let sec = expect_in_w_sec(state)?;
@@ -574,6 +600,24 @@ fn ld(state: &mut State, mut form: Form) -> Result<Option<LabelRef>, String> {
                 sec.memory.push_u8(op);
                 Ok(None)
             }
+        }
+        (SExp::Symbol(Symbol::Reg(dst_reg)), SExp::Symbol(Symbol::Reg(src_reg))) => {
+            let op = match (dst_reg.as_str(), src_reg.as_str()) {
+                (sm83::REG_A, sm83::REG_B) => INSTR_LD_TO_A_FROM_B.op_code,
+                illegal => {
+                    return Err(format!(
+                        "ld: unknown target/source register combination: {:?}",
+                        illegal
+                    ));
+                }
+            };
+
+            state.current_section_address.add_bytes(1);
+
+            let sec = expect_in_w_sec(state)?;
+            sec.memory.push_u8(op);
+
+            Ok(None)
         }
         (a1, a2) => return Err(format!("ld: illegal parameters: {:?} {:?}", a1, a2)),
     }

@@ -12,6 +12,7 @@ pub const REG_BC: &str = "bc";
 pub const REG_DE: &str = "de";
 pub const REG_A: &str = "a";
 pub const REG_B: &str = "b";
+pub const REG_C: &str = "c";
 
 // carry flag
 pub const FLAG_C: &str = "c";
@@ -223,12 +224,25 @@ pub static INSTR_LD_TO_A_FROM_DEREF_DE: Sm83Instr = Sm83Instr {
     immediate_args: &[],
     stream_args: 0,
 };
+pub static INSTR_LD_TO_A_FROM_B: Sm83Instr = Sm83Instr {
+    mnemonic: "LD %a %b",
+    op_code: 0x78,
+    immediate_args: &[],
+    stream_args: 0,
+};
 // CP
 pub static INSTR_CP_IMMEDIATE: Sm83Instr = Sm83Instr {
     mnemonic: "CP",
     op_code: 0xFE,
     immediate_args: &[],
     stream_args: 1,
+};
+// OR
+pub static INSTR_OR_A_C: Sm83Instr = Sm83Instr {
+    mnemonic: "OR %a %c",
+    op_code: 0xB1,
+    immediate_args: &[],
+    stream_args: 0,
 };
 
 pub static INSTRUCTIONS: &[&Sm83Instr] = &[

@@ -1,15 +1,16 @@
 use crate::arch::sm83::{
     self, INSTR_CP_IMMEDIATE, INSTR_DEC_A, INSTR_DEC_B, INSTR_DEC_BC, INSTR_DEC_DE, INSTR_DEC_HL,
-    INSTR_INC_A, INSTR_INC_BC, INSTR_INC_DE, INSTR_INC_HL, INSTR_LD_TO_A_FROM_DEREF_DE,
-    INSTR_LD_TO_A_FROM_DEREF_HL, INSTR_LD_TO_A_FROM_DEREF_HL_INC, INSTR_LD_TO_A_FROM_DEREF_LABEL,
-    INSTR_LD_TO_A_FROM_IMMEDIATE, INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_BC_FROM_LABEL,
-    INSTR_LD_TO_DE_FROM_LABEL, INSTR_LD_TO_DEREF_DE_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_A,
-    INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE, INSTR_LD_TO_DEREF_HL_INC_FROM_A,
-    INSTR_LD_TO_DEREF_LABEL_FROM_A, INSTR_LD_TO_HL_FROM_IMMEDIATE, INSTR_LD_TO_HL_FROM_LABEL,
+    INSTR_INC_A, INSTR_INC_BC, INSTR_INC_DE, INSTR_INC_HL, INSTR_LD_TO_A_FROM_B,
+    INSTR_LD_TO_A_FROM_DEREF_DE, INSTR_LD_TO_A_FROM_DEREF_HL, INSTR_LD_TO_A_FROM_DEREF_HL_INC,
+    INSTR_LD_TO_A_FROM_DEREF_LABEL, INSTR_LD_TO_A_FROM_IMMEDIATE, INSTR_LD_TO_B_FROM_IMMEDIATE,
+    INSTR_LD_TO_BC_FROM_LABEL, INSTR_LD_TO_DE_FROM_LABEL, INSTR_LD_TO_DEREF_DE_FROM_A,
+    INSTR_LD_TO_DEREF_HL_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE,
+    INSTR_LD_TO_DEREF_HL_INC_FROM_A, INSTR_LD_TO_DEREF_LABEL_FROM_A, INSTR_LD_TO_HL_FROM_IMMEDIATE,
+    INSTR_LD_TO_HL_FROM_LABEL, INSTR_OR_A_C,
 };
 use crate::asm::assembler::{
     Form, Label, LabelRef, Memory, Ref, Section, State, assemble_in_state, check_jr_jump, cp, dec,
-    ds, expect_label_name, inc, jp, jr, ld, resolve_labels,
+    ds, expect_label_name, inc, jp, jr, ld, or, resolve_labels,
 };
 
 use crate::asm::parser::{Address, SExp, Symbol, parse_from_string};
@@ -431,6 +432,14 @@ fn test_ld_ok() -> Result<(), String> {
             0x00,
             0x00,
         ),
+        (
+            "(ld %a %b)",
+            None,
+            1,
+            INSTR_LD_TO_A_FROM_B.op_code,
+            0x00,
+            0x00,
+        ),
     ];
 
     for (exp, expect_label_ref, byte_size, op_code, inst1, inst2) in cases {
@@ -579,6 +588,46 @@ fn test_cp_ok() -> Result<(), String> {
         );
 
         assert_eq!(state.current_section_address.0, TEST_SEC_ADDR.0 + byte_size);
+    }
+    Ok(())
+}
+
+#[test]
+fn test_or_fails() -> Result<(), String> {
+    let cases = [
+        ("(or)", "or: needs exactly two arguments"),
+        ("(or %a)", "or: needs exactly two arguments"),
+        ("(or %a %b %c)", "or: needs exactly two arguments"),
+    ];
+
+    for (exp, err) in cases {
+        let mut state = test_state();
+        let mut tl = parse_from_string(exp)?;
+        let r = or(&mut state, tl.forms.pop().unwrap());
+
+        assert!(
+            r.is_err(),
+            "expected error '{}' on expression = {:?}",
+            err,
+            exp
+        );
+        assert_eq!(r.unwrap_err(), err, "exp={:?}", exp);
+    }
+    Ok(())
+}
+
+#[test]
+fn test_or_ok() -> Result<(), String> {
+    let cases = [("(or %a %c)", INSTR_OR_A_C.op_code)];
+    for (exp, op) in cases {
+        let mut state = test_state();
+        let mut tl = parse_from_string(exp)?;
+        or(&mut state, tl.forms.pop().unwrap())?;
+
+        let sec = state.lookup_section(&TEST_SEC_NAME).expect("test sec");
+        assert_eq!(sec.memory.mem[0], op, "or expression={:?}", exp);
+
+        assert_eq!(state.current_section_address.0, TEST_SEC_ADDR.0 + 1);
     }
     Ok(())
 }
