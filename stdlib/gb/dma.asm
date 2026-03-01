@@ -1,3 +1,11 @@
+; whether the PPU (and LCD) are turned on
+(def-constant +b-lcdc-enable+ 7)
+; (DMG only) whether the BG is enabled
+(def-constant +b-lcdc-bg+ 0)
+
+(def-constant +lcdc-on+ (<< 1 +b-lcdc-enable+))
+(def-constant +lcdc-bg-on+ (<< 1 +b-lcdc-bg+))
+
 (def-section .tile-map-0
     :offset 0x9800
     :label-only true)

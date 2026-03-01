@@ -65,6 +65,37 @@ fn test_parse_include() -> Result<(), String> {
 }
 
 #[test]
+fn test_parse_def_constant() -> Result<(), String> {
+    let tl = parse(&mut chars("(def-constant +const+ 1)"))?;
+    assert_eq!(tl.forms.len(), 1);
+    assert_eq!(tl.forms[0].label, None);
+    assert_eq!(tl.forms[0].op, Symbol::Sym("def-constant".to_string()));
+    assert_eq!(tl.forms[0].exps.len(), 2);
+    assert_eq!(
+        tl.forms[0].exps[0],
+        SExp::Symbol(Symbol::Sym("+const+".to_string()))
+    );
+    assert_eq!(tl.forms[0].exps[1], SExp::Immediate(1));
+    Ok(())
+}
+
+#[test]
+fn test_parse_shift_left() -> Result<(), String> {
+    let tl = parse(&mut chars("(<< 1 +const+)"))?;
+    assert_eq!(tl.forms.len(), 1);
+    assert_eq!(tl.forms[0].label, None);
+    assert_eq!(tl.forms[0].op, Symbol::Sym("<<".to_string()));
+    assert_eq!(tl.forms[0].exps.len(), 2);
+    assert_eq!(tl.forms[0].exps[0], SExp::Immediate(1));
+    assert_eq!(
+        tl.forms[0].exps[1],
+        SExp::Symbol(Symbol::Sym("+const+".to_string()))
+    );
+
+    Ok(())
+}
+
+#[test]
 fn test_parse_deref_reg() -> Result<(), String> {
     let tl = parse(&mut chars("(%hl)"))?;
     assert_eq!(tl.forms.len(), 1);
@@ -108,6 +139,11 @@ fn test_parse_symbol() -> Result<(), String> {
         ("a", Symbol::Sym("a".to_string())),
         ("a)", Symbol::Sym("a".to_string())), // test symbol boundaries
         ("+", Symbol::Sym("+".to_string())),
+        ("+xxx+", Symbol::Sym("+xxx+".to_string())),
+        ("<", Symbol::Sym("<".to_string())),
+        (">", Symbol::Sym(">".to_string())),
+        ("<<", Symbol::Sym("<<".to_string())),
+        (">>", Symbol::Sym(">>".to_string())),
     ];
 
     for (exp, symbol) in cases {

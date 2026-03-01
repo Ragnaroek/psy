@@ -5,6 +5,12 @@ mod parser_test;
 use core::iter::Iterator;
 use std::{fs::File, io::Read, iter::Peekable, str::Chars};
 
+// special chars that cannot be part of a symbol
+const LPAREN: char = '(';
+const RPAREN: char = ')';
+const SEMICOLON: char = ';';
+const QUOTE: char = '"';
+
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub struct Label(String);
 
@@ -121,13 +127,13 @@ fn parse_form(chars: &mut Peekable<Chars>) -> Result<Form, String> {
         let la = chars.peek();
         match la {
             None => return Err("unexpected form end".to_string()),
-            Some('(') => exps.push(SExp::Form(parse_form(chars)?)),
-            Some('"') => exps.push(SExp::String(parse_string(chars)?)),
-            Some(')') => {
+            Some(&LPAREN) => exps.push(SExp::Form(parse_form(chars)?)),
+            Some(&QUOTE) => exps.push(SExp::String(parse_string(chars)?)),
+            Some(&RPAREN) => {
                 chars.advance_by(1).map_err(|e| e.to_string())?;
                 break 'parse;
             }
-            Some(';') => skip_line_comment(chars)?,
+            Some(&SEMICOLON) => skip_line_comment(chars)?,
             Some(ch) => {
                 if ch.is_numeric() {
                     exps.push(SExp::Immediate(parse_immediate(chars)?))
@@ -194,7 +200,7 @@ fn parse_symbol(chars: &mut Peekable<Chars>) -> Result<Symbol, String> {
 }
 
 fn is_sym_char(ch: char) -> bool {
-    ch.is_alphanumeric() || ch == '-' || ch == '+'
+    !ch.is_whitespace() && ch != LPAREN && ch != RPAREN && ch != SEMICOLON && ch != QUOTE
 }
 
 #[derive(PartialEq)]
