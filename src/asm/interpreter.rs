@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 use crate::asm::parser::{Address, Form, Label, SExp, Symbol};
 
-/// aar = address_arithmetic
+/// eval_aar, aar = address_arithmetic
 /// only able to to evaluate address arithmetic computation
 pub fn eval_aar(sexp: &SExp, label_addresses: &HashMap<Label, Address>) -> Result<Address, String> {
     match sexp {
@@ -80,4 +80,22 @@ fn eval_aar_plus(
         address = Address(address.0 + exp_address.0);
     }
     Ok(address)
+}
+
+/// eval_const
+/// const expression evaluation. Every variable in the expression tree must evaluate to a constant value.
+/// If not, an error is returned.
+pub fn eval_const(exp: &SExp, const_values: &HashMap<String, i64>) -> Result<i64, String> {
+    match exp {
+        SExp::Immediate(val) => Ok(*val),
+        SExp::Symbol(Symbol::Sym(name)) => {
+            let maybe_val = const_values.get(name);
+            if let Some(val) = maybe_val {
+                Ok(*val)
+            } else {
+                Err(format!("no constant value for symbol: {}", name))
+            }
+        }
+        illegal => Err(format!("not a constant expression: {:?}", illegal)),
+    }
 }

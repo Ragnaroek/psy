@@ -1,5 +1,5 @@
-use crate::asm::interpreter::eval_aar;
-use crate::asm::parser::{Address, Label, SExp, Symbol, parse_from_string};
+use crate::asm::interpreter::{eval_aar, eval_const};
+use crate::asm::parser::{Address, Form, Label, SExp, Symbol, parse_from_string};
 
 #[test]
 fn test_eval_aar_fails() -> Result<(), String> {
@@ -37,7 +37,7 @@ fn test_eval_aar_fails() -> Result<(), String> {
         ),
     ];
     for (exp, label_addresses, err) in cases {
-        let sexp = must_parse_form(exp);
+        let sexp = SExp::Form(must_parse_form(exp));
         let r = eval_aar(&sexp, label_addresses);
 
         assert!(
@@ -66,7 +66,7 @@ fn test_eval_aar_ok() -> Result<(), String> {
         ),
         (
             "subtract - 2 labels",
-            must_parse_form("(- 'lbl2 'lbl1)"),
+            SExp::Form(must_parse_form("(- 'lbl2 'lbl1)")),
             &[
                 (Label::from_str("lbl1"), Address(0x4000)),
                 (Label::from_str("lbl2"), Address(0x5000)),
@@ -78,7 +78,7 @@ fn test_eval_aar_ok() -> Result<(), String> {
         ),
         (
             "subtract - 3 labels",
-            must_parse_form("(- 'lbl3 'lbl2 'lbl1)"),
+            SExp::Form(must_parse_form("(- 'lbl3 'lbl2 'lbl1)")),
             &[
                 (Label::from_str("lbl1"), Address(0x3000)),
                 (Label::from_str("lbl2"), Address(0x5000)),
@@ -91,7 +91,9 @@ fn test_eval_aar_ok() -> Result<(), String> {
         ),
         (
             "subtract - expression tree",
-            must_parse_form("(- (- 'lbl3 'lbl2) (- 'lbl1 (- 'lbl0 'lblX)))"),
+            SExp::Form(must_parse_form(
+                "(- (- 'lbl3 'lbl2) (- 'lbl1 (- 'lbl0 'lblX)))",
+            )),
             &[
                 (Label::from_str("lbl1"), Address(0x3000)),
                 (Label::from_str("lbl2"), Address(0x5000)),
@@ -106,13 +108,13 @@ fn test_eval_aar_ok() -> Result<(), String> {
         ),
         (
             "add - 0 labels",
-            must_parse_form("(+)"),
+            SExp::Form(must_parse_form("(+)")),
             &[].iter().cloned().collect(),
             Address(0x00),
         ),
         (
             "add - 1 labels",
-            must_parse_form("(+ 'lbl1)"),
+            SExp::Form(must_parse_form("(+ 'lbl1)")),
             &[(Label::from_str("lbl1"), Address(0x4000))]
                 .iter()
                 .cloned()
@@ -121,7 +123,7 @@ fn test_eval_aar_ok() -> Result<(), String> {
         ),
         (
             "add - 2 labels",
-            must_parse_form("(+ 'lbl2 'lbl1)"),
+            SExp::Form(must_parse_form("(+ 'lbl2 'lbl1)")),
             &[
                 (Label::from_str("lbl1"), Address(0x4000)),
                 (Label::from_str("lbl2"), Address(0x5000)),
@@ -133,7 +135,7 @@ fn test_eval_aar_ok() -> Result<(), String> {
         ),
         (
             "add - 3 labels",
-            must_parse_form("(+ 'lbl3 'lbl2 'lbl1)"),
+            SExp::Form(must_parse_form("(+ 'lbl3 'lbl2 'lbl1)")),
             &[
                 (Label::from_str("lbl1"), Address(0x4000)),
                 (Label::from_str("lbl2"), Address(0x5000)),
@@ -146,7 +148,7 @@ fn test_eval_aar_ok() -> Result<(), String> {
         ),
         (
             "expression - mixed",
-            must_parse_form("(+ 'lbl3 (- 'lbl2 'lbl1))"),
+            SExp::Form(must_parse_form("(+ 'lbl3 (- 'lbl2 'lbl1))")),
             &[
                 (Label::from_str("lbl1"), Address(0x4000)),
                 (Label::from_str("lbl2"), Address(0x5000)),
@@ -165,12 +167,63 @@ fn test_eval_aar_ok() -> Result<(), String> {
     Ok(())
 }
 
-fn must_parse_form(str: &str) -> SExp {
-    SExp::Form(
-        parse_from_string(str)
-            .expect("parse form")
-            .forms
-            .pop()
-            .expect("test form"),
-    )
+#[test]
+fn test_eval_const_fails() -> Result<(), String> {
+    let cases = [
+        (
+            "(def-constant +c+ b)",
+            &[].iter().cloned().collect(),
+            "no constant value for symbol: b",
+        ),
+        (
+            "(def-constant +c+ +k+)",
+            &[].iter().cloned().collect(),
+            "no constant value for symbol: +k+",
+        ),
+    ];
+    for (exp, label_addresses, err) in cases {
+        let form = must_parse_form(exp);
+        let r = eval_const(&form.exps[1], label_addresses);
+
+        assert!(
+            r.is_err(),
+            "expected error '{}' on expression = {:?}",
+            err,
+            exp
+        );
+        assert_eq!(r.unwrap_err(), err, "exp={:?}", exp);
+    }
+
+    Ok(())
+}
+
+#[test]
+fn test_eval_const_ok() -> Result<(), String> {
+    let cases = [
+        (
+            "immediate value const expression",
+            SExp::Immediate(666),
+            &[].iter().cloned().collect(),
+            666,
+        ),
+        (
+            "const bound symbol",
+            SExp::Symbol(Symbol::Sym("+k+".to_string())),
+            &[("+k+".to_string(), 666)].iter().cloned().collect(),
+            666,
+        ),
+    ];
+    for (test, sexp, const_values, want_const_value) in cases {
+        let got_result_address = eval_const(&sexp, const_values)?;
+        assert_eq!(got_result_address, want_const_value, "test: {}", test);
+    }
+    Ok(())
+}
+
+fn must_parse_form(str: &str) -> Form {
+    parse_from_string(str)
+        .expect("parse form")
+        .forms
+        .pop()
+        .expect("test form")
 }

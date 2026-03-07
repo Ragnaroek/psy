@@ -43,7 +43,7 @@ pub enum SExp {
     Symbol(Symbol),
     Form(Form),
     String(String),
-    Immediate(u64),
+    Immediate(i64),
 }
 
 #[derive(Debug, PartialEq)]
@@ -210,7 +210,7 @@ enum ImmediateType {
     Binary,
 }
 
-fn parse_immediate(chars: &mut Peekable<Chars>) -> Result<u64, String> {
+fn parse_immediate(chars: &mut Peekable<Chars>) -> Result<i64, String> {
     let mut immediate = String::new();
 
     let may_first_num = chars.next();
@@ -265,24 +265,24 @@ fn parse_immediate(chars: &mut Peekable<Chars>) -> Result<u64, String> {
     parse_number_value(&immediate, immediate_type)
 }
 
-fn parse_number_value(str: &str, immediate_type: ImmediateType) -> Result<u64, String> {
+fn parse_number_value(str: &str, immediate_type: ImmediateType) -> Result<i64, String> {
     match immediate_type {
         ImmediateType::Decimal => {
-            let u64_val: u64 = str.parse::<u64>().map_err(|e| e.to_string())?;
-            Ok(u64_val)
+            let i64_val: i64 = str.parse::<i64>().map_err(|e| e.to_string())?;
+            Ok(i64_val)
         }
         ImmediateType::Hex => {
-            let hex_u64 = u64::from_str_radix(str, 16);
-            if let Ok(val_u64) = hex_u64 {
-                Ok(val_u64)
+            let hex_i64 = i64::from_str_radix(str, 16);
+            if let Ok(val_i64) = hex_i64 {
+                Ok(val_i64)
             } else {
                 Err(format!("invalid hex immediate: {}", str))
             }
         }
         ImmediateType::Binary => {
-            let binary_u64 = u64::from_str_radix(str, 2);
-            if let Ok(val_u64) = binary_u64 {
-                Ok(val_u64)
+            let binary_i64 = i64::from_str_radix(str, 2);
+            if let Ok(val_i64) = binary_i64 {
+                Ok(val_i64)
             } else {
                 Err(format!("invalid binary immediate: {}", str))
             }

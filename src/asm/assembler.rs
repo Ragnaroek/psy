@@ -12,7 +12,7 @@ use crate::arch::sm83::{
     INSTR_LD_TO_DEREF_LABEL_FROM_A, INSTR_LD_TO_HL_FROM_IMMEDIATE, INSTR_LD_TO_HL_FROM_LABEL,
     INSTR_OR_A_C,
 };
-use crate::asm::interpreter::eval_aar;
+use crate::asm::interpreter::{eval_aar, eval_const};
 use crate::asm::parser::{Address, Form, Label, SExp, Symbol, TopLevel, parse_from_file};
 use std::collections::HashMap;
 use std::fs::File;
@@ -58,6 +58,7 @@ struct State {
     current_section_name: Option<String>,
     current_section_address: Address,
     label_addresses: HashMap<Label, Address>,
+    const_values: HashMap<String, i64>,
 }
 
 type RefCheck = fn(i32) -> Result<(), String>;
@@ -93,6 +94,7 @@ impl State {
             current_section_name: None,
             current_section_address: Address(0),
             label_addresses: HashMap::new(),
+            const_values: HashMap::new(),
         }
     }
 
@@ -163,10 +165,12 @@ fn assemble_in_state(pasm: TopLevel, state: &mut State) -> Result<(), String> {
 
         let may_label_ref = match &form.op {
             Symbol::Sym(sym_name) => {
-                if sym_name == "include" {
-                    include(state, form)?
-                } else if sym_name == "def-section" {
+                if sym_name == "def-section" {
                     def_section(state, form)?
+                } else if sym_name == "def-constant" {
+                    def_constant(state, form)?
+                } else if sym_name == "include" {
+                    include(state, form)?
                 } else if sym_name == "section" {
                     section(state, form)?
                 } else if sym_name == "db" {
@@ -288,14 +292,19 @@ fn def_section(state: &mut State, form: Form) -> Result<Option<LabelRef>, String
     }
 
     let name = expect_section_name(&form.exps[0])?;
-    let offset = Address(expect_immediate_value_or(
-        key_value(&form.exps, "offset")?,
-        0,
-    )?);
+    let offset_val = expect_immediate_value_or(key_value(&form.exps, "offset")?, 0)?;
+    if offset_val.is_negative() {
+        return Err("def-section: offset must be positive".to_string());
+    }
+    let offset = Address(offset_val as u64);
 
     let may_length = key_value(&form.exps, "length")?;
     let length = if let Some(exp) = may_length {
-        Some(expect_immediate(exp)?)
+        let immediate = expect_immediate(exp)?;
+        if immediate.is_negative() {
+            return Err("def-section: length must be positive".to_string());
+        }
+        Some(immediate as u64)
     } else {
         None
     };
@@ -323,6 +332,17 @@ fn def_section(state: &mut State, form: Form) -> Result<Option<LabelRef>, String
         label_only,
         memory,
     });
+    Ok(None)
+}
+
+fn def_constant(state: &mut State, form: Form) -> Result<Option<LabelRef>, String> {
+    if form.exps.len() != 2 {
+        return Err("illegal def-constant".to_string());
+    }
+
+    let const_name = expect_constant_name(&form.exps[0])?;
+    let const_val = eval_const(&form.exps[1], &state.const_values)?;
+    state.const_values.insert(const_name, const_val);
     Ok(None)
 }
 
@@ -369,7 +389,10 @@ fn ds(state: &mut State, ds: Form) -> Result<Option<LabelRef>, String> {
     }
 
     let len = expect_immediate(&ds.exps[0])?;
-    state.current_section_address.add_bytes(len);
+    if len.is_negative() {
+        return Err("ds len must be positive".to_string());
+    }
+    state.current_section_address.add_bytes(len as u64);
     let sec = expect_in_w_sec(state)?;
     for _ in 0..len {
         sec.memory.push_u8(0);
@@ -871,16 +894,32 @@ fn expect_flag(exp: &SExp) -> Result<&str, String> {
     }
 }
 
-fn expect_immediate(exp: &SExp) -> Result<u64, String> {
+fn expect_immediate(exp: &SExp) -> Result<i64, String> {
     match exp {
         SExp::Immediate(val) => Ok(*val),
         _ => Err(format!("not an immediate value: {:?}", exp)),
     }
 }
 
+fn expect_constant_name(exp: &SExp) -> Result<String, String> {
+    match exp {
+        SExp::Symbol(Symbol::Sym(name)) => {
+            if !name.ends_with('+') || !name.starts_with('+') {
+                Err(format!(
+                    "invalid constant name: {}, must be surrounded by +",
+                    name
+                ))
+            } else {
+                Ok(name.clone())
+            }
+        }
+        _ => Err(format!("not a constant symbol name: {:?}", exp)),
+    }
+}
+
 // If the Sexp is not a immediate value it will return an error.
 // If the Option is None it will use the or value.
-fn expect_immediate_value_or(exp: Option<&SExp>, or: u64) -> Result<u64, String> {
+fn expect_immediate_value_or(exp: Option<&SExp>, or: i64) -> Result<i64, String> {
     if let Some(exp) = exp {
         expect_immediate(exp)
     } else {

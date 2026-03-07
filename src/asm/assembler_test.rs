@@ -10,10 +10,62 @@ use crate::arch::sm83::{
 };
 use crate::asm::assembler::{
     Form, Label, LabelRef, Memory, Ref, Section, State, assemble_in_state, check_jr_jump, cp, dec,
-    ds, expect_label_name, inc, jp, jr, ld, or, resolve_labels,
+    def_constant, ds, expect_label_name, inc, jp, jr, ld, or, resolve_labels,
 };
 
 use crate::asm::parser::{Address, SExp, Symbol, parse_from_string};
+
+#[test]
+fn test_def_constant_fails() -> Result<(), String> {
+    let cases = [
+        ("(def-constant)", "illegal def-constant"),
+        ("(def-constant +k+)", "illegal def-constant"),
+        (
+            "(def-constant x 1)",
+            "invalid constant name: x, must be surrounded by +",
+        ),
+    ];
+
+    for (exp, err) in cases {
+        let mut state = test_state();
+        let mut tl = parse_from_string(exp)?;
+
+        let r = def_constant(&mut state, tl.forms.pop().unwrap());
+
+        assert!(
+            r.is_err(),
+            "expected error '{}' on expression = {:?}",
+            err,
+            exp
+        );
+        assert_eq!(r.unwrap_err(), err, "exp={:?}", exp);
+    }
+
+    Ok(())
+}
+
+#[test]
+fn test_def_constant_ok() -> Result<(), String> {
+    // actual const expression evaluation is tested in interpreter_test
+    // and not repeated here
+    let cases = [("(def-constant +x+ 666)", ("+x+", 666))];
+
+    for (exp, (name, want_val)) in cases {
+        let mut state = test_state();
+        let mut tl = parse_from_string(exp)?;
+
+        def_constant(&mut state, tl.forms.pop().unwrap())?;
+
+        let maybe_val = state.const_values.get(name);
+        if let Some(val) = maybe_val {
+            assert_eq!(*val, want_val);
+        } else {
+            assert!(false, "no constant val for name {}", name);
+        }
+    }
+
+    Ok(())
+}
 
 #[test]
 fn test_ds_ok() -> Result<(), String> {
