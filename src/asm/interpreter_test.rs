@@ -180,6 +180,21 @@ fn test_eval_const_fails() -> Result<(), String> {
             &[].iter().cloned().collect(),
             "no constant value for symbol: +k+",
         ),
+        (
+            "(def-constant +c+ \"str\")",
+            &[].iter().cloned().collect(),
+            "not a constant expression: String(\"str\")",
+        ),
+        (
+            "(def-constant +c+ (<<))",
+            &[].iter().cloned().collect(),
+            "<<: needs exactly 2 parameters",
+        ),
+        (
+            "(def-constant +c+ (xxx))",
+            &[].iter().cloned().collect(),
+            "illegal constant op: \"xxx\"",
+        ),
     ];
     for (exp, label_addresses, err) in cases {
         let form = must_parse_form(exp);
@@ -211,6 +226,49 @@ fn test_eval_const_ok() -> Result<(), String> {
             SExp::Symbol(Symbol::Sym("+k+".to_string())),
             &[("+k+".to_string(), 666)].iter().cloned().collect(),
             666,
+        ),
+        (
+            "shift left expression - const values",
+            SExp::Form(Form {
+                label: None,
+                op: Symbol::Sym("<<".to_string()),
+                exps: vec![SExp::Immediate(1), SExp::Immediate(8)],
+            }),
+            &[].iter().cloned().collect(),
+            1 << 8,
+        ),
+        (
+            "shift left expression - variables",
+            SExp::Form(Form {
+                label: None,
+                op: Symbol::Sym("<<".to_string()),
+                exps: vec![
+                    SExp::Symbol(Symbol::Sym("+k+".to_string())),
+                    SExp::Immediate(8),
+                ],
+            }),
+            &[("+k+".to_string(), 42)].iter().cloned().collect(),
+            42 << 8,
+        ),
+        (
+            "shift left expression - recursive",
+            SExp::Form(Form {
+                label: None,
+                op: Symbol::Sym("<<".to_string()),
+                exps: vec![
+                    SExp::Form(Form {
+                        label: None,
+                        op: Symbol::Sym("<<".to_string()),
+                        exps: vec![
+                            SExp::Symbol(Symbol::Sym("+k+".to_string())),
+                            SExp::Immediate(8),
+                        ],
+                    }),
+                    SExp::Immediate(8),
+                ],
+            }),
+            &[("+k+".to_string(), 1)].iter().cloned().collect(),
+            (1 << 8) << 8,
         ),
     ];
     for (test, sexp, const_values, want_const_value) in cases {

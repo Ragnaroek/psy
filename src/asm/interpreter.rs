@@ -96,6 +96,26 @@ pub fn eval_const(exp: &SExp, const_values: &HashMap<String, i64>) -> Result<i64
                 Err(format!("no constant value for symbol: {}", name))
             }
         }
+        SExp::Form(form) => {
+            let op_name = match &form.op {
+                Symbol::Sym(op_name) => op_name,
+                illegal => return Err(format!("illegal constant form: {:?}", illegal)),
+            };
+            match op_name.as_str() {
+                "<<" => eval_const_left_shift(form, const_values),
+                _ => Err(format!("illegal constant op: {:?}", op_name)),
+            }
+        }
         illegal => Err(format!("not a constant expression: {:?}", illegal)),
     }
+}
+
+fn eval_const_left_shift(form: &Form, const_values: &HashMap<String, i64>) -> Result<i64, String> {
+    if form.exps.len() != 2 {
+        return Err(format!("<<: needs exactly 2 parameters"));
+    }
+
+    let v = eval_const(&form.exps[0], const_values)?;
+    let shift = eval_const(&form.exps[1], const_values)?;
+    Ok(v << shift)
 }
