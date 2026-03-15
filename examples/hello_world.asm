@@ -26,7 +26,7 @@
 (label 'wait-vb-blank) ;0x155
 (ld %a ('hw-ly))
 (cp 144)
-(jp #c 'wait-vb-blank)
+(jr #c 'wait-vb-blank)
 
 ; Turn the LCD off
 (ld %a 0)
