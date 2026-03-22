@@ -1,4 +1,4 @@
-use crate::asm::interpreter::{eval_aar, eval_const};
+use crate::asm::interpreter::{CONST_OP_BITWISE_OR, eval_aar, eval_const};
 use crate::asm::parser::{Address, Form, Label, SExp, Symbol, parse_from_string};
 
 #[test]
@@ -191,6 +191,11 @@ fn test_eval_const_fails() -> Result<(), String> {
             "<<: needs exactly 2 parameters",
         ),
         (
+            "(def-constant +c+ (|))",
+            &[].iter().cloned().collect(),
+            "|: needs exactly 2 parameters",
+        ),
+        (
             "(def-constant +c+ (xxx))",
             &[].iter().cloned().collect(),
             "illegal constant op: \"xxx\"",
@@ -269,6 +274,16 @@ fn test_eval_const_ok() -> Result<(), String> {
             }),
             &[("+k+".to_string(), 1)].iter().cloned().collect(),
             (1 << 8) << 8,
+        ),
+        (
+            "bitwise or - const values",
+            SExp::Form(Form {
+                label: None,
+                op: Symbol::Sym(CONST_OP_BITWISE_OR.to_string()),
+                exps: vec![SExp::Immediate(0x01), SExp::Immediate(0x10)],
+            }),
+            &[].iter().cloned().collect(),
+            0x11,
         ),
     ];
     for (test, sexp, const_values, want_const_value) in cases {

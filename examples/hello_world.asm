@@ -61,7 +61,7 @@
 (jr #nz 'copy-tilemap)
 
 ; Turn the LCD on
-;(ld %a (| +lcdc-on+ +lcdc_bg_on+))
+(ld %a (| +lcdc-on+ +lcdc-bg-on+))
 (ld ('hw-lcdc) %a)
 
 ; During the first (blank) frame, initialize display registers

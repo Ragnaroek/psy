@@ -12,7 +12,7 @@ use crate::arch::sm83::{
     INSTR_LD_TO_DEREF_LABEL_FROM_A, INSTR_LD_TO_HL_FROM_IMMEDIATE, INSTR_LD_TO_HL_FROM_LABEL,
     INSTR_OR_A_C,
 };
-use crate::asm::interpreter::{eval_aar, eval_const};
+use crate::asm::interpreter::{CONST_OP_BITWISE_OR, CONST_OP_SHIFT_LEFT, eval_aar, eval_const};
 use crate::asm::parser::{Address, Form, Label, SExp, Symbol, TopLevel, parse_from_file};
 use std::collections::HashMap;
 use std::fs::File;
@@ -497,52 +497,44 @@ fn ld(state: &mut State, mut form: Form) -> Result<Option<LabelRef>, String> {
             }))
         }
         (SExp::Symbol(Symbol::Reg(dst_reg)), SExp::Immediate(im_value)) => {
-            let op = match dst_reg.as_str() {
-                sm83::REG_A => INSTR_LD_TO_A_FROM_IMMEDIATE.op_code,
-                sm83::REG_B => INSTR_LD_TO_B_FROM_IMMEDIATE.op_code,
-                sm83::REG_HL => INSTR_LD_TO_HL_FROM_IMMEDIATE.op_code,
-                _ => return Err(format!("ld: unknown target register: {}", dst_reg)),
-            };
-
-            state.current_section_address.add_bytes(2);
-
-            // TODO check range of immediate value!
-            let sec = expect_in_w_sec(state)?;
-            sec.memory.push_u8(op);
-            sec.memory.push_u8(im_value as u8);
-            Ok(None)
+            ld_immediate_to_reg(state, dst_reg, im_value)
         }
         (SExp::Symbol(Symbol::Reg(dst_reg)), SExp::Form(form)) => {
             if let Symbol::Sym(sym) = &form.op {
-                // deref from label
-                let op = match dst_reg.as_str() {
-                    sm83::REG_A => INSTR_LD_TO_A_FROM_DEREF_LABEL.op_code,
-                    sm83::REG_BC => INSTR_LD_TO_BC_FROM_LABEL.op_code,
-                    _ => return Err("ld: illegal dest reg in label deref".to_string()),
-                };
-
-                state.current_section_address.add_bytes(3);
-
-                let sec = expect_in_w_sec(state)?;
-                sec.memory.push_u8(op);
-                sec.memory.push_u16(0);
-
-                let label_ref = if sym == "" && form.label.is_some() {
-                    let form_label = form.label.expect("form label");
-                    LabelRef {
-                        reference: Ref::from_label(form_label),
-                        sec_name: sec.name.clone(),
-                        patch_index: sec.memory.mem_ptr - 2,
-                    }
+                if is_const_expression_op(sym) {
+                    let val = eval_const(&SExp::Form(form), &state.const_values)?;
+                    ld_immediate_to_reg(state, dst_reg, val)
                 } else {
-                    LabelRef {
-                        reference: Ref::from_form(form),
-                        sec_name: sec.name.clone(),
-                        patch_index: sec.memory.mem_ptr - 2,
-                    }
-                };
+                    // deref from label
+                    let op = match dst_reg.as_str() {
+                        sm83::REG_A => INSTR_LD_TO_A_FROM_DEREF_LABEL.op_code,
+                        sm83::REG_BC => INSTR_LD_TO_BC_FROM_LABEL.op_code,
+                        _ => return Err("ld: illegal dest reg in label deref".to_string()),
+                    };
 
-                Ok(Some(label_ref))
+                    state.current_section_address.add_bytes(3);
+
+                    let sec = expect_in_w_sec(state)?;
+                    sec.memory.push_u8(op);
+                    sec.memory.push_u16(0);
+
+                    let label_ref = if sym == "" && form.label.is_some() {
+                        let form_label = form.label.expect("form label");
+                        LabelRef {
+                            reference: Ref::from_label(form_label),
+                            sec_name: sec.name.clone(),
+                            patch_index: sec.memory.mem_ptr - 2,
+                        }
+                    } else {
+                        LabelRef {
+                            reference: Ref::from_form(form),
+                            sec_name: sec.name.clone(),
+                            patch_index: sec.memory.mem_ptr - 2,
+                        }
+                    };
+
+                    Ok(Some(label_ref))
+                }
             } else {
                 let (src_reg, deref_mod) = expect_deref_reg(&form)?;
                 let op = match (dst_reg.as_str(), src_reg, deref_mod) {
@@ -644,6 +636,27 @@ fn ld(state: &mut State, mut form: Form) -> Result<Option<LabelRef>, String> {
         }
         (a1, a2) => return Err(format!("ld: illegal parameters: {:?} {:?}", a1, a2)),
     }
+}
+
+fn ld_immediate_to_reg(
+    state: &mut State,
+    dst_reg: String,
+    im_value: i64,
+) -> Result<Option<LabelRef>, String> {
+    let op = match dst_reg.as_str() {
+        sm83::REG_A => INSTR_LD_TO_A_FROM_IMMEDIATE.op_code,
+        sm83::REG_B => INSTR_LD_TO_B_FROM_IMMEDIATE.op_code,
+        sm83::REG_HL => INSTR_LD_TO_HL_FROM_IMMEDIATE.op_code,
+        _ => return Err(format!("ld: unknown target register: {}", dst_reg)),
+    };
+
+    state.current_section_address.add_bytes(2);
+
+    // TODO check range of immediate value!
+    let sec = expect_in_w_sec(state)?;
+    sec.memory.push_u8(op);
+    sec.memory.push_u8(im_value as u8);
+    Ok(None)
 }
 
 fn expect_deref_reg(form: &Form) -> Result<(&str, Option<&str>), String> {
@@ -996,6 +1009,10 @@ fn is_flag(exp: &SExp) -> Option<&String> {
         SExp::Symbol(Symbol::Flag(flg)) => Some(flg),
         _ => None,
     }
+}
+
+fn is_const_expression_op(sym: &str) -> bool {
+    sym == CONST_OP_BITWISE_OR || sym == CONST_OP_SHIFT_LEFT
 }
 
 fn key_value<'a>(exps: &'a [SExp], name: &str) -> Result<Option<&'a SExp>, String> {

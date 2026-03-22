@@ -308,6 +308,9 @@ fn test_ld_fails() -> Result<(), String> {
     Ok(())
 }
 
+/// +c1+ and +c2+ are predefined constants in the test with value
+/// +c1+ = 0x01
+/// +c2+ = 0x10
 #[test]
 fn test_ld_ok() -> Result<(), String> {
     let cases = [
@@ -386,6 +389,15 @@ fn test_ld_ok() -> Result<(), String> {
             2,
             INSTR_LD_TO_A_FROM_IMMEDIATE.op_code,
             0x2A,
+            0x00,
+        ),
+        (
+            // constant expression evaluation
+            "(ld %a (| +c1+ +c2+))",
+            None,
+            2,
+            INSTR_LD_TO_A_FROM_IMMEDIATE.op_code,
+            0x11,
             0x00,
         ),
         (
@@ -505,8 +517,10 @@ fn test_ld_ok() -> Result<(), String> {
 
     for (exp, expect_label_ref, byte_size, op_code, inst1, inst2) in cases {
         let mut state = test_state();
-        let mut tl = parse_from_string(exp)?;
+        state.const_values.insert("+c1+".to_string(), 0x01);
+        state.const_values.insert("+c2+".to_string(), 0x10);
 
+        let mut tl = parse_from_string(exp)?;
         let got_label_ref = ld(&mut state, tl.forms.pop().unwrap())?;
 
         assert_eq_label_ref(got_label_ref, expect_label_ref);

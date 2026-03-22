@@ -82,6 +82,9 @@ fn eval_aar_plus(
     Ok(address)
 }
 
+pub const CONST_OP_SHIFT_LEFT: &str = "<<";
+pub const CONST_OP_BITWISE_OR: &str = "|";
+
 /// eval_const
 /// const expression evaluation. Every variable in the expression tree must evaluate to a constant value.
 /// If not, an error is returned.
@@ -102,7 +105,8 @@ pub fn eval_const(exp: &SExp, const_values: &HashMap<String, i64>) -> Result<i64
                 illegal => return Err(format!("illegal constant form: {:?}", illegal)),
             };
             match op_name.as_str() {
-                "<<" => eval_const_left_shift(form, const_values),
+                CONST_OP_SHIFT_LEFT => eval_const_left_shift(form, const_values),
+                CONST_OP_BITWISE_OR => eval_const_bitwise_or(form, const_values),
                 _ => Err(format!("illegal constant op: {:?}", op_name)),
             }
         }
@@ -118,4 +122,14 @@ fn eval_const_left_shift(form: &Form, const_values: &HashMap<String, i64>) -> Re
     let v = eval_const(&form.exps[0], const_values)?;
     let shift = eval_const(&form.exps[1], const_values)?;
     Ok(v << shift)
+}
+
+fn eval_const_bitwise_or(form: &Form, const_values: &HashMap<String, i64>) -> Result<i64, String> {
+    if form.exps.len() != 2 {
+        return Err(format!("|: needs exactly 2 parameters"));
+    }
+
+    let v1 = eval_const(&form.exps[0], const_values)?;
+    let v2 = eval_const(&form.exps[1], const_values)?;
+    Ok(v1 | v2)
 }
