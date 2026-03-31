@@ -1,43 +1,37 @@
-use crate::arch::sm83;
+#[cfg(test)]
+#[path = "./mod_test.rs"]
+mod mod_test;
 
-pub fn disassemble(data: &[u8]) -> Result<Vec<String>, String> {
-    let mut result = Vec::new();
+use std::collections::HashMap;
+
+use crate::arch::sm83::{self, Sm83Instr};
+
+pub struct GBDisInstr {
+    pub offset: usize, // offset into the original byte sequence that produced this disassembly
+    pub len: usize,    // length of the instruction in bytes
+    pub instr: &'static Sm83Instr,
+}
+
+pub struct GBDisassembly {
+    pub instructions: HashMap<usize, GBDisInstr>,
+}
+
+pub fn disassemble(data: &[u8]) -> Result<GBDisassembly, String> {
+    let mut instructions = HashMap::new();
     let mut ip = 0;
     while ip < data.len() {
-        let decode_result = sm83::decode(data[ip]);
-        ip += 1;
-        if decode_result.is_err() {
-            result.push("???".to_string());
-            continue;
-        }
-        let instr = decode_result.expect("decoded instruction");
-
-        let mut str = String::new();
-        str.push_str(&format!("({:?}", instr.mnemonic));
-        for arg in instr.immediate_args {
-            str.push(' ');
-            str.push_str(arg);
-        }
-
-        if instr.stream_args == 0 {
-            str.push(')')
-        } else if instr.stream_args == 1 {
-            if ip < data.len() {
-                str.push_str(&format!(" 0x{:x})", data[ip]));
-            } else {
-                str.push_str("ERR)"); //placeholder for now
-            }
-        } else if instr.stream_args == 2 {
-            if ip + 1 < data.len() {
-                let a16 = u16::from_le_bytes([data[ip], data[ip + 1]]);
-                str.push_str(&format!(" 0x{:x})", a16));
-            } else {
-                str.push_str("ERR)"); //placeholder for now
-            }
-        }
-        ip += instr.stream_args;
-
-        result.push(str);
+        let start_ip = ip;
+        println!("data = {:x}", data[start_ip]);
+        let instr = sm83::decode(data[start_ip]);
+        ip += 1 + instr.immediate_args.len() + instr.stream_args;
+        instructions.insert(
+            start_ip,
+            GBDisInstr {
+                offset: start_ip,
+                len: ip - start_ip,
+                instr,
+            },
+        );
     }
-    return Ok(result);
+    return Ok(GBDisassembly { instructions });
 }

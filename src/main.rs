@@ -91,9 +91,9 @@ fn assemble(arg: &Assemble) -> Result<(), String> {
 
 fn disassemble_gb(arg: &DisassembleGB) -> Result<(), String> {
     let data = read_all_from_file(&arg.file)?;
-    let instructions = psy::dasm::gb::disassemble(&data)?;
-    for instruction in &instructions {
-        println!("{}", instruction)
+    let dis = psy::dasm::gb::disassemble(&data)?;
+    for (_, dis_instr) in &dis.instructions {
+        println!("{}", dis_instr.instr.text(None))
     }
     Ok(())
 }
