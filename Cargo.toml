@@ -3,6 +3,9 @@ name = "psy"
 version = "0.1.0"
 edition = "2024"
 authors = ["Michael Bohn <spaceodyssey@gmx.de>"]
+description = "(psy) S-Expression multi-purpose assembler"
+license = "GPL-3.0"
+repository = "https://github.com/Ragnaroek/psy"
 
 [lib]
 name = "psy"
