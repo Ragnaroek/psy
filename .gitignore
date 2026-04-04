@@ -16,6 +16,7 @@ target/
 
 # test builds
 *.gb
+*.sav
 
 # temp collected docs
 _doc/
