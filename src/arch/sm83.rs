@@ -239,7 +239,7 @@ pub static INSTR_LD_TO_HL_FROM_IMMEDIATE: Sm83Instr = Sm83Instr {
     mnemonic: "LD %hl",
     op_code: 0x21,
     immediate_args: &[],
-    stream_args: 1,
+    stream_args: 2,
 };
 pub static INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE: Sm83Instr = Sm83Instr {
     mnemonic: "LD (%hl)",

@@ -417,12 +417,12 @@ fn test_ld_ok() -> Result<(), String> {
             0x00,
         ),
         (
-            "(ld %hl 32)",
+            "(ld %hl 0x1234)",
             None,
-            2,
+            3,
             INSTR_LD_TO_HL_FROM_IMMEDIATE.op_code,
-            0x20,
-            0x00,
+            0x34,
+            0x12,
         ),
         // load deref immediate
         (

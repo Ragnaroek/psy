@@ -643,19 +643,23 @@ fn ld_immediate_to_reg(
     dst_reg: String,
     im_value: i64,
 ) -> Result<Option<LabelRef>, String> {
-    let op = match dst_reg.as_str() {
-        sm83::REG_A => INSTR_LD_TO_A_FROM_IMMEDIATE.op_code,
-        sm83::REG_B => INSTR_LD_TO_B_FROM_IMMEDIATE.op_code,
-        sm83::REG_HL => INSTR_LD_TO_HL_FROM_IMMEDIATE.op_code,
+    let (op, len) = match dst_reg.as_str() {
+        sm83::REG_A => (INSTR_LD_TO_A_FROM_IMMEDIATE.op_code, 2),
+        sm83::REG_B => (INSTR_LD_TO_B_FROM_IMMEDIATE.op_code, 2),
+        sm83::REG_HL => (INSTR_LD_TO_HL_FROM_IMMEDIATE.op_code, 3),
         _ => return Err(format!("ld: unknown target register: {}", dst_reg)),
     };
 
-    state.current_section_address.add_bytes(2);
+    state.current_section_address.add_bytes(len);
 
     // TODO check range of immediate value!
     let sec = expect_in_w_sec(state)?;
     sec.memory.push_u8(op);
-    sec.memory.push_u8(im_value as u8);
+    if len == 2 {
+        sec.memory.push_u8(im_value as u8);
+    } else if len == 3 {
+        sec.memory.push_u16(im_value as u16);
+    }
     Ok(None)
 }
 
