@@ -6,11 +6,10 @@ use crate::arch::sm83::{
     self, INSTR_DEC_A, INSTR_DEC_B, INSTR_DEC_BC, INSTR_DEC_DE, INSTR_DEC_HL, INSTR_INC_A,
     INSTR_INC_BC, INSTR_INC_DE, INSTR_INC_HL, INSTR_LD_TO_A_FROM_B, INSTR_LD_TO_A_FROM_DEREF_DE,
     INSTR_LD_TO_A_FROM_DEREF_HL, INSTR_LD_TO_A_FROM_DEREF_HL_INC, INSTR_LD_TO_A_FROM_DEREF_LABEL,
-    INSTR_LD_TO_A_FROM_IMMEDIATE, INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_BC_FROM_LABEL,
-    INSTR_LD_TO_DE_FROM_LABEL, INSTR_LD_TO_DEREF_DE_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_A,
+    INSTR_LD_TO_A_FROM_IMMEDIATE, INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_BC_FROM_IMMEDIATE,
+    INSTR_LD_TO_DE_FROM_IMMEDIATE, INSTR_LD_TO_DEREF_DE_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_A,
     INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE, INSTR_LD_TO_DEREF_HL_INC_FROM_A,
-    INSTR_LD_TO_DEREF_LABEL_FROM_A, INSTR_LD_TO_HL_FROM_IMMEDIATE, INSTR_LD_TO_HL_FROM_LABEL,
-    INSTR_OR_A_C,
+    INSTR_LD_TO_DEREF_LABEL_FROM_A, INSTR_LD_TO_HL_FROM_IMMEDIATE, INSTR_OR_A_C,
 };
 use crate::asm::interpreter::{CONST_OP_BITWISE_OR, CONST_OP_SHIFT_LEFT, eval_aar, eval_const};
 use crate::asm::parser::{Address, Form, Label, SExp, Symbol, TopLevel, parse_from_file};
@@ -479,9 +478,9 @@ fn ld(state: &mut State, mut form: Form) -> Result<Option<LabelRef>, String> {
     match (exp_0, exp_1) {
         (SExp::Symbol(Symbol::Reg(dst_reg)), SExp::Symbol(Symbol::Label(lbl))) => {
             let op = match dst_reg.as_str() {
-                sm83::REG_BC => INSTR_LD_TO_BC_FROM_LABEL.op_code,
-                sm83::REG_DE => INSTR_LD_TO_DE_FROM_LABEL.op_code,
-                sm83::REG_HL => INSTR_LD_TO_HL_FROM_LABEL.op_code,
+                sm83::REG_BC => INSTR_LD_TO_BC_FROM_IMMEDIATE.op_code,
+                sm83::REG_DE => INSTR_LD_TO_DE_FROM_IMMEDIATE.op_code,
+                sm83::REG_HL => INSTR_LD_TO_HL_FROM_IMMEDIATE.op_code,
                 _ => return Err(format!("ld: unknown target register: {}", dst_reg)),
             };
 
@@ -507,8 +506,8 @@ fn ld(state: &mut State, mut form: Form) -> Result<Option<LabelRef>, String> {
                 } else {
                     // deref from label
                     let op = match dst_reg.as_str() {
-                        sm83::REG_A => INSTR_LD_TO_A_FROM_DEREF_LABEL.op_code,
-                        sm83::REG_BC => INSTR_LD_TO_BC_FROM_LABEL.op_code,
+                        sm83::REG_A => INSTR_LD_TO_A_FROM_DEREF_LABEL.op_code, // label address will be derefed and the value taken
+                        sm83::REG_BC => INSTR_LD_TO_BC_FROM_IMMEDIATE.op_code, // label address will be taken as immediate
                         _ => return Err("ld: illegal dest reg in label deref".to_string()),
                     };
 

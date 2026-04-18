@@ -3,10 +3,10 @@ use crate::arch::sm83::{
     INSTR_INC_A, INSTR_INC_BC, INSTR_INC_DE, INSTR_INC_HL, INSTR_LD_TO_A_FROM_B,
     INSTR_LD_TO_A_FROM_DEREF_DE, INSTR_LD_TO_A_FROM_DEREF_HL, INSTR_LD_TO_A_FROM_DEREF_HL_INC,
     INSTR_LD_TO_A_FROM_DEREF_LABEL, INSTR_LD_TO_A_FROM_IMMEDIATE, INSTR_LD_TO_B_FROM_IMMEDIATE,
-    INSTR_LD_TO_BC_FROM_LABEL, INSTR_LD_TO_DE_FROM_LABEL, INSTR_LD_TO_DEREF_DE_FROM_A,
+    INSTR_LD_TO_BC_FROM_IMMEDIATE, INSTR_LD_TO_DE_FROM_IMMEDIATE, INSTR_LD_TO_DEREF_DE_FROM_A,
     INSTR_LD_TO_DEREF_HL_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE,
     INSTR_LD_TO_DEREF_HL_INC_FROM_A, INSTR_LD_TO_DEREF_LABEL_FROM_A, INSTR_LD_TO_HL_FROM_IMMEDIATE,
-    INSTR_LD_TO_HL_FROM_LABEL, INSTR_OR_A_C,
+    INSTR_OR_A_C,
 };
 use crate::asm::assembler::{
     Form, Label, LabelRef, Memory, Ref, Section, State, assemble_in_state, check_jr_jump, cp, dec,
@@ -323,7 +323,7 @@ fn test_ld_ok() -> Result<(), String> {
                 patch_index: 1,
             }),
             3,
-            INSTR_LD_TO_HL_FROM_LABEL.op_code,
+            INSTR_LD_TO_HL_FROM_IMMEDIATE.op_code,
             0x00,
             0x00,
         ),
@@ -335,7 +335,7 @@ fn test_ld_ok() -> Result<(), String> {
                 patch_index: 1,
             }),
             3,
-            INSTR_LD_TO_BC_FROM_LABEL.op_code,
+            INSTR_LD_TO_BC_FROM_IMMEDIATE.op_code,
             0x00,
             0x00,
         ),
@@ -354,7 +354,7 @@ fn test_ld_ok() -> Result<(), String> {
                 patch_index: 1,
             }),
             3,
-            INSTR_LD_TO_BC_FROM_LABEL.op_code,
+            INSTR_LD_TO_BC_FROM_IMMEDIATE.op_code,
             0x00,
             0x00,
         ),
@@ -366,7 +366,7 @@ fn test_ld_ok() -> Result<(), String> {
                 patch_index: 1,
             }),
             3,
-            INSTR_LD_TO_DE_FROM_LABEL.op_code,
+            INSTR_LD_TO_DE_FROM_IMMEDIATE.op_code,
             0x00,
             0x00,
         ),
@@ -378,7 +378,7 @@ fn test_ld_ok() -> Result<(), String> {
                 patch_index: 1,
             }),
             3,
-            INSTR_LD_TO_HL_FROM_LABEL.op_code,
+            INSTR_LD_TO_HL_FROM_IMMEDIATE.op_code,
             0x00,
             0x00,
         ),
@@ -521,7 +521,8 @@ fn test_ld_ok() -> Result<(), String> {
         state.const_values.insert("+c2+".to_string(), 0x10);
 
         let mut tl = parse_from_string(exp)?;
-        let got_label_ref = ld(&mut state, tl.forms.pop().unwrap())?;
+        let got_label_ref =
+            ld(&mut state, tl.forms.pop().unwrap()).map_err(|e| format!("{}: {}", exp, e))?;
 
         assert_eq_label_ref(got_label_ref, expect_label_ref);
 
