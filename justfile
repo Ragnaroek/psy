@@ -6,6 +6,9 @@ asm FILE OUT:
 test:
     cargo test
 
+build:
+    cargo build --release
+
 coverage:
     cargo tarpaulin --ignore-tests --out Lcov
     genhtml lcov.info --output-directory coverage_report

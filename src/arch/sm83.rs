@@ -17,6 +17,7 @@ pub const FLAG_C: &str = "c";
 /// not zero flag
 pub const FLAG_NZ: &str = "nz";
 
+#[derive(Debug)]
 pub struct Sm83Instr {
     pub mnemonic: &'static str,
     pub op_code: u8,
@@ -51,7 +52,7 @@ impl Sm83Instr {
                 str.push_str("ERR)"); //placeholder for now
             }
         } else if self.stream_args == 1 && binary.is_none() {
-            str.push_str("n8)")
+            str.push_str(" n8)")
         } else if self.stream_args == 2
             && let Some(data) = binary
         {
@@ -62,7 +63,7 @@ impl Sm83Instr {
                 str.push_str("ERR)"); //placeholder for now
             }
         } else if self.stream_args == 2 && binary.is_none() {
-            str.push_str("n16)");
+            str.push_str(" n16)");
         }
 
         str
