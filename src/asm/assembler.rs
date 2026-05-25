@@ -174,6 +174,8 @@ fn assemble_in_state(pasm: TopLevel, state: &mut State) -> Result<(), String> {
                     section(state, form)?
                 } else if sym_name == "db" {
                     db(state, form)?
+                } else if sym_name == "dw" {
+                    dw(state, form)?
                 } else if sym_name == "ds" {
                     ds(state, form)?
                 } else if sym_name == "label" {
@@ -375,7 +377,26 @@ fn db(state: &mut State, db: Form) -> Result<Option<LabelRef>, String> {
             sec.memory.push_u8(v as u8);
         }
     } else {
+        // only advance address so that marking locations also
+        // works in read-only memory
         state.current_section_address.add_bytes(1);
+    }
+    Ok(None)
+}
+
+fn dw(state: &mut State, db: Form) -> Result<Option<LabelRef>, String> {
+    expect_in_section(state)?;
+    if !db.exps.is_empty() {
+        state
+            .current_section_address
+            .add_bytes((db.exps.len() * 2) as u64);
+        let sec = expect_in_w_sec(state)?;
+        for exp in &db.exps {
+            let v = expect_immediate(exp)?;
+            sec.memory.push_u16(v as u16);
+        }
+    } else {
+        state.current_section_address.add_bytes(2);
     }
     Ok(None)
 }
@@ -384,12 +405,12 @@ fn ds(state: &mut State, ds: Form) -> Result<Option<LabelRef>, String> {
     expect_in_section(state)?;
 
     if ds.exps.is_empty() {
-        return Err("ds needs at least a len".to_string());
+        return Err("ds: needs at least a len".to_string());
     }
 
     let len = expect_immediate(&ds.exps[0])?;
     if len.is_negative() {
-        return Err("ds len must be positive".to_string());
+        return Err("ds: len must be positive".to_string());
     }
     state.current_section_address.add_bytes(len as u64);
     let sec = expect_in_w_sec(state)?;

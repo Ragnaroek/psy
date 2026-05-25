@@ -9,8 +9,8 @@ use crate::arch::sm83::{
     INSTR_OR_A_C,
 };
 use crate::asm::assembler::{
-    Form, Label, LabelRef, Memory, Ref, Section, State, assemble_in_state, check_jr_jump, cp, dec,
-    def_constant, ds, expect_label_name, inc, jp, jr, ld, or, resolve_labels,
+    Form, Label, LabelRef, Memory, Ref, Section, State, assemble_in_state, check_jr_jump, cp, db,
+    dec, def_constant, ds, dw, expect_label_name, inc, jp, jr, ld, or, resolve_labels,
 };
 
 use crate::asm::parser::{Address, SExp, Symbol, parse_from_string};
@@ -68,6 +68,28 @@ fn test_def_constant_ok() -> Result<(), String> {
 }
 
 #[test]
+fn test_ds_fail() -> Result<(), String> {
+    let cases = [("(ds)", "ds: needs at least a len")];
+
+    for (exp, err) in cases {
+        let mut state = test_state();
+        let mut tl = parse_from_string(exp)?;
+
+        let r = ds(&mut state, tl.forms.pop().unwrap());
+
+        assert!(
+            r.is_err(),
+            "expected error '{}' on expression = {:?}",
+            err,
+            exp
+        );
+        assert_eq!(r.unwrap_err(), err, "exp={:?}", exp);
+    }
+
+    Ok(())
+}
+
+#[test]
 fn test_ds_ok() -> Result<(), String> {
     let cases = [("(ds 0)", 0), ("(ds 1", 1), ("(ds 66)", 66)];
 
@@ -79,6 +101,58 @@ fn test_ds_ok() -> Result<(), String> {
 
         let sec = state.lookup_section(&TEST_SEC_NAME).expect("test sec");
         assert_eq!(sec.memory.mem_ptr, mem_ptr);
+    }
+
+    Ok(())
+}
+
+#[test]
+fn test_db_ok() -> Result<(), String> {
+    let cases: [(&str, &[u8], usize); 5] = [
+        ("(db)", &[0], 0),
+        ("(db 0)", &[0], 1),
+        ("(db 1)", &[1], 1),
+        ("(db 0xFF)", &[0xFF], 1),
+        ("(db 0 1 2 3 4 0xFF)", &[0, 1, 2, 3, 4, 0xFF], 6),
+    ];
+
+    for (exp, mem_vals, mem_ptr) in cases {
+        let mut state = test_state();
+        let mut tl = parse_from_string(exp)?;
+
+        db(&mut state, tl.forms.pop().unwrap())?;
+
+        let sec = state.lookup_section(&TEST_SEC_NAME).expect("test sec");
+        assert_eq!(sec.memory.mem_ptr, mem_ptr, "exp={}", exp);
+        assert_eq!(&sec.memory.mem[0..(mem_vals.len())], mem_vals);
+    }
+
+    Ok(())
+}
+
+#[test]
+fn test_dw_ok() -> Result<(), String> {
+    let cases: [(&str, &[u8], usize); 5] = [
+        ("(dw)", &[0, 0], 0),
+        ("(dw 0)", &[0, 0], 2),
+        ("(dw 1)", &[1, 0], 2),
+        ("(dw 0xFF)", &[0xFF, 0], 2),
+        (
+            "(dw 0 1 2 3 4 0xAAFF 0xFFFF)",
+            &[0, 0, 1, 0, 2, 0, 3, 0, 4, 0, 0xFF, 0xAA, 0xFF, 0xFF],
+            14,
+        ),
+    ];
+
+    for (exp, mem_vals, mem_ptr) in cases {
+        let mut state = test_state();
+        let mut tl = parse_from_string(exp)?;
+
+        dw(&mut state, tl.forms.pop().unwrap())?;
+
+        let sec = state.lookup_section(&TEST_SEC_NAME).expect("test sec");
+        assert_eq!(sec.memory.mem_ptr, mem_ptr, "exp={}", exp);
+        assert_eq!(&sec.memory.mem[0..mem_vals.len()], mem_vals);
     }
 
     Ok(())

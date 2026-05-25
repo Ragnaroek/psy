@@ -1,2 +1,8 @@
 hello-world:
     cd .. && just asm examples/hello_world.asm examples/hello_world.gb
+
+tile-test:
+    cd .. && just asm examples/tile_test.asm examples/tile_test.gb
+
+bricks:
+    cd .. && just asm examples/bricks.asm examples/bricks.gb
