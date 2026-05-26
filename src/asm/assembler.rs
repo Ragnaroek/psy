@@ -9,7 +9,8 @@ use crate::arch::sm83::{
     INSTR_LD_TO_A_FROM_IMMEDIATE, INSTR_LD_TO_B_FROM_IMMEDIATE, INSTR_LD_TO_BC_FROM_IMMEDIATE,
     INSTR_LD_TO_DE_FROM_IMMEDIATE, INSTR_LD_TO_DEREF_DE_FROM_A, INSTR_LD_TO_DEREF_HL_FROM_A,
     INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE, INSTR_LD_TO_DEREF_HL_INC_FROM_A,
-    INSTR_LD_TO_DEREF_LABEL_FROM_A, INSTR_LD_TO_HL_FROM_IMMEDIATE, INSTR_OR_A_C,
+    INSTR_LD_TO_DEREF_LABEL_FROM_A, INSTR_LD_TO_HL_FROM_IMMEDIATE, INSTR_NOP, INSTR_OR_A_C,
+    INSTR_RET,
 };
 use crate::asm::interpreter::{CONST_OP_BITWISE_OR, CONST_OP_SHIFT_LEFT, eval_aar, eval_const};
 use crate::asm::parser::{Address, Form, Label, SExp, Symbol, TopLevel, parse_from_file};
@@ -202,7 +203,9 @@ fn assemble_in_state(pasm: TopLevel, state: &mut State) -> Result<(), String> {
                 } else if sym_name == "call" {
                     call(state, form)?
                 } else if sym_name == "nop" {
-                    nop(state)?
+                    nop(state, form)?
+                } else if sym_name == "ret" {
+                    ret(state, form)?
                 } else {
                     return Err(format!("unknown top-level: {:?}", sym_name));
                 }
@@ -485,10 +488,10 @@ fn or(state: &mut State, form: Form) -> Result<Option<LabelRef>, String> {
     Ok(None)
 }
 
-fn nop(state: &mut State) -> Result<Option<LabelRef>, String> {
+fn nop(state: &mut State, mut _form: Form) -> Result<Option<LabelRef>, String> {
     state.current_section_address.add_bytes(1);
     let sec = expect_in_w_sec(state)?;
-    sec.memory.push_u8(0);
+    sec.memory.push_u8(INSTR_NOP.op_code);
     Ok(None)
 }
 
@@ -890,6 +893,13 @@ fn call(state: &mut State, form: Form) -> Result<Option<LabelRef>, String> {
         sec_name: sec.name.clone(),
         patch_index: sec.memory.mem_ptr - 2,
     }))
+}
+
+fn ret(state: &mut State, mut _form: Form) -> Result<Option<LabelRef>, String> {
+    state.current_section_address.add_bytes(1);
+    let sec = expect_in_w_sec(state)?;
+    sec.memory.push_u8(INSTR_RET.op_code);
+    Ok(None)
 }
 
 fn write_call_instr(

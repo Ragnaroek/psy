@@ -10,7 +10,8 @@ use crate::arch::sm83::{
 };
 use crate::asm::assembler::{
     Form, Label, LabelRef, Memory, Ref, Section, State, assemble_in_state, call, check_jr_jump, cp,
-    db, dec, def_constant, ds, dw, expect_label_name, inc, jp, jr, ld, or, resolve_labels,
+    db, dec, def_constant, ds, dw, expect_label_name, inc, jp, jr, ld, nop, or, resolve_labels,
+    ret,
 };
 
 use crate::asm::parser::{Address, SExp, Symbol, parse_from_string};
@@ -153,6 +154,28 @@ fn test_dw_ok() -> Result<(), String> {
         let sec = state.lookup_section(&TEST_SEC_NAME).expect("test sec");
         assert_eq!(sec.memory.mem_ptr, mem_ptr, "exp={}", exp);
         assert_eq!(&sec.memory.mem[0..mem_vals.len()], mem_vals);
+    }
+
+    Ok(())
+}
+
+#[test]
+fn test_nop_ok() -> Result<(), String> {
+    let cases = [("(nop)", sm83::INSTR_NOP.op_code)];
+
+    for (exp, op_code) in cases {
+        let mut state = test_state();
+        let mut tl = parse_from_string(exp)?;
+
+        let got_label_ref = nop(&mut state, tl.forms.pop().unwrap())?;
+
+        assert!(got_label_ref.is_none());
+        let sec = state.lookup_section(&TEST_SEC_NAME).expect("test sec");
+        assert_eq!(
+            sec.memory.mem[0], op_code,
+            "op_code was {:x}, expected {:?}, expression={:?}",
+            sec.memory.mem[0], op_code, exp,
+        );
     }
 
     Ok(())
@@ -1017,6 +1040,28 @@ fn test_call_ok() -> Result<(), String> {
             sec.memory.mem[2]
         );
     }
+    Ok(())
+}
+
+#[test]
+fn test_ret_ok() -> Result<(), String> {
+    let cases = [("(ret)", sm83::INSTR_RET.op_code)];
+
+    for (exp, op_code) in cases {
+        let mut state = test_state();
+        let mut tl = parse_from_string(exp)?;
+
+        let got_label_ref = ret(&mut state, tl.forms.pop().unwrap())?;
+
+        assert!(got_label_ref.is_none());
+        let sec = state.lookup_section(&TEST_SEC_NAME).expect("test sec");
+        assert_eq!(
+            sec.memory.mem[0], op_code,
+            "op_code was {:x}, expected {:?}, expression={:?}",
+            sec.memory.mem[0], op_code, exp,
+        );
+    }
+
     Ok(())
 }
 

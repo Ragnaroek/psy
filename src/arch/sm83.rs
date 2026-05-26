@@ -325,6 +325,14 @@ pub static INSTR_CALL_IF_NZ: Sm83Instr = Sm83Instr {
     stream_args: 2,
 };
 
+// RET
+pub static INSTR_RET: Sm83Instr = Sm83Instr {
+    mnemonic: "RET",
+    op_code: 0xC9,
+    immediate_args: &[],
+    stream_args: 0,
+};
+
 pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
     /*0x00*/ &INSTR_NOP,
     /*0x01*/ &INSTR_LD_TO_BC_FROM_IMMEDIATE,
