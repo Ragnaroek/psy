@@ -199,6 +199,8 @@ fn assemble_in_state(pasm: TopLevel, state: &mut State) -> Result<(), String> {
                     cp(state, form)?
                 } else if sym_name == "or" {
                     or(state, form)?
+                } else if sym_name == "call" {
+                    call(state, form)?
                 } else if sym_name == "nop" {
                     nop(state)?
                 } else {
@@ -861,6 +863,50 @@ fn dec(state: &mut State, form: Form) -> Result<Option<LabelRef>, String> {
         illegal => return Err(format!("dec: illegal argument: {:?}", illegal)),
     }
     Ok(None)
+}
+
+fn call(state: &mut State, form: Form) -> Result<Option<LabelRef>, String> {
+    if form.exps.is_empty() {
+        return Err("call: needs at least one argument".to_string());
+    }
+
+    let (flag_name, lbl) = if form.exps.len() == 1 {
+        (None, expect_label_name(&form.exps[0])?)
+    } else if form.exps.len() == 2 {
+        let flag_name = expect_flag(&form.exps[0])?;
+        let lbl = expect_label_name(&form.exps[1])?;
+        (Some(flag_name), lbl)
+    } else {
+        // illegal call
+        return Err("call: illegal arguments".to_string());
+    };
+
+    state.current_section_address.add_bytes(3);
+
+    let sec = expect_in_w_sec(state)?;
+    write_call_instr(sec, flag_name, 0)?;
+    Ok(Some(LabelRef {
+        reference: Ref::from_label(lbl),
+        sec_name: sec.name.clone(),
+        patch_index: sec.memory.mem_ptr - 2,
+    }))
+}
+
+fn write_call_instr(
+    sec: &mut Section,
+    flag_name: Option<&str>,
+    address_val: u16,
+) -> Result<(), String> {
+    let op = match flag_name {
+        None => sm83::INSTR_CALL.op_code,
+        Some(sm83::FLAG_C) => sm83::INSTR_CALL_IF_C.op_code,
+        Some(sm83::FLAG_NZ) => sm83::INSTR_CALL_IF_NZ.op_code,
+        Some(illegal) => return Err(format!("call: unknown flag '{}'", illegal)),
+    };
+
+    sec.memory.push_u8(op);
+    sec.memory.push_u16(address_val);
+    Ok(())
 }
 
 // interpret/assemble helper

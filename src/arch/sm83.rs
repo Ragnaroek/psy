@@ -305,6 +305,25 @@ pub static INSTR_OR_A_C: Sm83Instr = Sm83Instr {
     immediate_args: &[],
     stream_args: 0,
 };
+// CALL
+pub static INSTR_CALL: Sm83Instr = Sm83Instr {
+    mnemonic: "CALL 'fn",
+    op_code: 0xCD,
+    immediate_args: &[],
+    stream_args: 2,
+};
+pub static INSTR_CALL_IF_C: Sm83Instr = Sm83Instr {
+    mnemonic: "CALL #c 'fn",
+    op_code: 0xDC,
+    immediate_args: &[],
+    stream_args: 2,
+};
+pub static INSTR_CALL_IF_NZ: Sm83Instr = Sm83Instr {
+    mnemonic: "CALL #nz 'fn",
+    op_code: 0xC4,
+    immediate_args: &[],
+    stream_args: 2,
+};
 
 pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
     /*0x00*/ &INSTR_NOP,

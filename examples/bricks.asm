@@ -32,7 +32,17 @@
 (ld %de 'tiles)
 (ld %hl 0x9000)
 (ld %bc (- 'tiles-end 'tiles))
-(call mem-copy)
+(call 'mem-copy)
+
+(label 'mem-copy)
+(ld %a (%de))
+(ld (%hl +) %a)
+(inc %de)
+(dec %bc)
+(ld %a %b)
+(or %a %c)
+(jr #nz 'mem-copy)
+(ret)
 
 (label 'tiles)
 (dw 0xFFFF)

@@ -9,8 +9,8 @@ use crate::arch::sm83::{
     INSTR_OR_A_C,
 };
 use crate::asm::assembler::{
-    Form, Label, LabelRef, Memory, Ref, Section, State, assemble_in_state, check_jr_jump, cp, db,
-    dec, def_constant, ds, dw, expect_label_name, inc, jp, jr, ld, or, resolve_labels,
+    Form, Label, LabelRef, Memory, Ref, Section, State, assemble_in_state, call, check_jr_jump, cp,
+    db, dec, def_constant, ds, dw, expect_label_name, inc, jp, jr, ld, or, resolve_labels,
 };
 
 use crate::asm::parser::{Address, SExp, Symbol, parse_from_string};
@@ -935,6 +935,92 @@ fn assert_eq_label_ref(got: Option<LabelRef>, expect: Option<LabelRef>) {
         assert_eq!(got_ref.patch_index, expect_ref.patch_index, "patch_index");
     }
 }
+
+#[test]
+fn test_call_fails() -> Result<(), String> {
+    let cases = [
+        ("(call)", "call: needs at least one argument"),
+        ("(call #c 'foo 'bar)", "call: illegal arguments"),
+    ];
+
+    for (exp, err) in cases {
+        let mut state = test_state();
+        let mut tl = parse_from_string(exp)?;
+
+        let r = call(&mut state, tl.forms.pop().unwrap());
+
+        assert!(
+            r.is_err(),
+            "expected error '{}' on expression = {:?}",
+            err,
+            exp
+        );
+        assert_eq!(r.unwrap_err(), err, "exp={:?}", exp);
+    }
+    Ok(())
+}
+
+#[test]
+fn test_call_ok() -> Result<(), String> {
+    let cases = [
+        (
+            "(call 'fn)",
+            Some(LabelRef {
+                reference: Ref::from_label(Label::from_string("fn".to_string())),
+                sec_name: TEST_SEC_NAME.to_string(),
+                patch_index: 1, // address bytes start at byte 1
+            }),
+            sm83::INSTR_CALL.op_code,
+        ),
+        (
+            "(call #c 'fn)",
+            Some(LabelRef {
+                reference: Ref::from_label(Label::from_string("fn".to_string())),
+                sec_name: TEST_SEC_NAME.to_string(),
+                patch_index: 1, // address bytes start at byte 1
+            }),
+            sm83::INSTR_CALL_IF_C.op_code,
+        ),
+        (
+            "(call #nz 'fn)",
+            Some(LabelRef {
+                reference: Ref::from_label(Label::from_string("fn".to_string())),
+                sec_name: TEST_SEC_NAME.to_string(),
+                patch_index: 1, // address bytes start at byte 1
+            }),
+            sm83::INSTR_CALL_IF_NZ.op_code,
+        ),
+    ];
+
+    for (exp, expect_label_ref, op_code) in cases {
+        let mut state = test_state();
+        let mut tl = parse_from_string(exp)?;
+
+        let got_label_ref = call(&mut state, tl.forms.pop().unwrap())?;
+
+        assert_eq_label_ref(got_label_ref, expect_label_ref);
+
+        let sec = state.lookup_section(&TEST_SEC_NAME).expect("test sec");
+        assert_eq!(
+            sec.memory.mem[0], op_code,
+            "op_code was {:x}, expected {:x}",
+            sec.memory.mem[0], op_code
+        );
+        assert_eq!(
+            sec.memory.mem[1], 0,
+            "inst2 was {:x} (expected 0)",
+            sec.memory.mem[1]
+        );
+        assert_eq!(
+            sec.memory.mem[2], 0,
+            "inst3 was {:x} (expected 0)",
+            sec.memory.mem[2]
+        );
+    }
+    Ok(())
+}
+
+// helper
 
 fn assert_eq_ref(got_ref: &Ref, expect_ref: &Ref) {
     match got_ref {
