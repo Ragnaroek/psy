@@ -11,7 +11,7 @@ use crate::arch::sm83::{
 use crate::asm::assembler::{
     Form, Label, LabelRef, Memory, Ref, Section, State, assemble_in_state, call, check_jr_jump, cp,
     db, dec, def_constant, ds, dw, expect_label_name, inc, jp, jr, ld, nop, or, resolve_labels,
-    ret,
+    ret, tile_to_u16,
 };
 
 use crate::asm::parser::{Address, SExp, Symbol, parse_from_string};
@@ -133,11 +133,12 @@ fn test_db_ok() -> Result<(), String> {
 
 #[test]
 fn test_dw_ok() -> Result<(), String> {
-    let cases: [(&str, &[u8], usize); 5] = [
+    let cases: [(&str, &[u8], usize); 6] = [
         ("(dw)", &[0, 0], 0),
         ("(dw 0)", &[0, 0], 2),
         ("(dw 1)", &[1, 0], 2),
         ("(dw 0xFF)", &[0xFF, 0], 2),
+        ("(dw `00112233)", &[0x33, 0x0F], 2),
         (
             "(dw 0 1 2 3 4 0xAAFF 0xFFFF)",
             &[0, 0, 1, 0, 2, 0, 3, 0, 4, 0, 0xFF, 0xAA, 0xFF, 0xFF],
@@ -1060,6 +1061,18 @@ fn test_ret_ok() -> Result<(), String> {
             "op_code was {:x}, expected {:?}, expression={:?}",
             sec.memory.mem[0], op_code, exp,
         );
+    }
+
+    Ok(())
+}
+
+#[test]
+fn test_tile_to_u16() -> Result<(), String> {
+    let cases = [("01012323", 0x0F55)];
+
+    for (tile_def, expected_val) in cases {
+        let val = tile_to_u16(&tile_def)?;
+        assert_eq!(val, expected_val);
     }
 
     Ok(())

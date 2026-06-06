@@ -54,6 +54,24 @@ fn test_parse_immediate_values() -> Result<(), String> {
 }
 
 #[test]
+fn test_parse_gameboy_tile_values() -> Result<(), String> {
+    let cases = [("(dw `00112233)", "00112233")];
+
+    for (exp, val) in cases {
+        let tl = parse(&mut chars(exp))?;
+        assert_eq!(tl.forms.len(), 1);
+        assert_eq!(tl.forms[0].op, Symbol::Sym("dw".to_string()));
+        assert_eq!(tl.forms[0].exps.len(), 1);
+        assert_eq!(
+            tl.forms[0].exps[0],
+            SExp::Symbol(Symbol::GameboyTile(val.to_string()))
+        );
+    }
+
+    Ok(())
+}
+
+#[test]
 fn test_parse_include() -> Result<(), String> {
     let tl = parse(&mut chars("(include \"gb_dma\")"))?;
     assert_eq!(tl.forms.len(), 1);
@@ -144,6 +162,7 @@ fn test_parse_symbol() -> Result<(), String> {
         (">", Symbol::Sym(">".to_string())),
         ("<<", Symbol::Sym("<<".to_string())),
         (">>", Symbol::Sym(">>".to_string())),
+        ("`00112233", Symbol::GameboyTile("00112233".to_string())),
     ];
 
     for (exp, symbol) in cases {
