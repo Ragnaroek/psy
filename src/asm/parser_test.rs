@@ -144,6 +144,7 @@ fn test_parse_symbol() -> Result<(), String> {
         (">", Symbol::Sym(">".to_string())),
         ("<<", Symbol::Sym("<<".to_string())),
         (">>", Symbol::Sym(">>".to_string())),
+        ("’00112233", Symbol::GameboyTile("00112233".to_string())),
     ];
 
     for (exp, symbol) in cases {

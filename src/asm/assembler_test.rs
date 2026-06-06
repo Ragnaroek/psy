@@ -133,11 +133,12 @@ fn test_db_ok() -> Result<(), String> {
 
 #[test]
 fn test_dw_ok() -> Result<(), String> {
-    let cases: [(&str, &[u8], usize); 5] = [
+    let cases: [(&str, &[u8], usize); 6] = [
         ("(dw)", &[0, 0], 0),
         ("(dw 0)", &[0, 0], 2),
         ("(dw 1)", &[1, 0], 2),
         ("(dw 0xFF)", &[0xFF, 0], 2),
+        ("(dw ’00112233)", &[0x0F, 0x33], 2),
         (
             "(dw 0 1 2 3 4 0xAAFF 0xFFFF)",
             &[0, 0, 1, 0, 2, 0, 3, 0, 4, 0, 0xFF, 0xAA, 0xFF, 0xFF],

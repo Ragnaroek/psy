@@ -48,12 +48,13 @@ pub enum SExp {
 
 #[derive(Debug, PartialEq)]
 pub enum Symbol {
-    Keyword(String), // : prefix
-    Section(String), // . prefix
-    Reg(String),     // % prefix
-    Label(Label),    // ' prefix
-    Flag(String),    // # prefix
-    Sym(String),     //a-zA-Z only
+    Keyword(String),     // : prefix
+    Section(String),     // . prefix
+    Reg(String),         // % prefix
+    Label(Label),        // ' prefix
+    Flag(String),        // # prefix
+    GameboyTile(String), // ’ prefix
+    Sym(String),         //a-zA-Z only
 }
 
 #[derive(Debug, PartialEq)]
@@ -161,6 +162,7 @@ fn parse_symbol(chars: &mut Peekable<Chars>) -> Result<Symbol, String> {
         && first_char != '\''
         && first_char != '%'
         && first_char != '#'
+        && first_char != '’'
     {
         if is_sym_char(first_char) {
             chars.advance_by(1).map_err(|e| e.to_string())?;
@@ -195,6 +197,7 @@ fn parse_symbol(chars: &mut Peekable<Chars>) -> Result<Symbol, String> {
         '\'' => Ok(Symbol::Label(Label(sym))),
         '%' => Ok(Symbol::Reg(sym)),
         '#' => Ok(Symbol::Flag(sym)),
+        '’' => Ok(Symbol::GameboyTile(sym)),
         _ => Ok(Symbol::Sym(sym)),
     }
 }

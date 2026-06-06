@@ -397,8 +397,14 @@ fn dw(state: &mut State, db: Form) -> Result<Option<LabelRef>, String> {
             .add_bytes((db.exps.len() * 2) as u64);
         let sec = expect_in_w_sec(state)?;
         for exp in &db.exps {
-            let v = expect_immediate(exp)?;
-            sec.memory.push_u16(v as u16);
+            if let Some(v) = is_immediate(exp) {
+                sec.memory.push_u16(v as u16);
+            } else if Some(tile) = is_gameboy_tile(exp) {
+                let v = tile_to_u16(tile);
+                sec.memory.push_u16(v);
+            } else {
+                return Err("dw: immediate or tile data expected".to_string());
+            }
         }
     } else {
         state.current_section_address.add_bytes(2);
@@ -1091,6 +1097,20 @@ fn is_flag(exp: &SExp) -> Option<&String> {
     }
 }
 
+fn is_immediate(exp: &SExp) -> Option<i64> {
+    match exp {
+        SExp::Immediate(v) => Some(*v),
+        _ => None,
+    }
+}
+
+fn is_gameboy_tile(exp: &SExp) -> Option<&String> {
+    match exp {
+        SExp::Symbol(Symbol::GameboyTile(tile)) => Some(tile),
+        _ => None,
+    }
+}
+
 fn is_const_expression_op(sym: &str) -> bool {
     sym == CONST_OP_BITWISE_OR || sym == CONST_OP_SHIFT_LEFT
 }
@@ -1108,4 +1128,10 @@ fn key_value<'a>(exps: &'a [SExp], name: &str) -> Result<Option<&'a SExp>, Strin
         i += 1;
     }
     Ok(None)
+}
+
+fn tile_to_u16(tile: &str) -> Result<u16, String> {
+    if tile.len() != 8 {
+        return Err("tile data needs exact 8 pixel definitions");
+    }
 }
