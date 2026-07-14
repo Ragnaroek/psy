@@ -26,6 +26,11 @@ pub struct Sm83Instr {
 }
 
 impl Sm83Instr {
+    /// The length of the instruction in bytes.
+    pub fn len(&self) -> usize {
+        self.immediate_args.len() + self.stream_args + 1 // +1 for the op code
+    }
+
     /// The (psy) text representation of the instruction.
     /// if the binary block is supplied it should start
     /// with the op_code of the instruction and contains the
