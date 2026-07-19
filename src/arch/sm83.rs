@@ -310,6 +310,13 @@ pub static INSTR_OR_A_C: Sm83Instr = Sm83Instr {
     immediate_args: &[],
     stream_args: 0,
 };
+// XOR
+pub static INSTR_XOR_A_A: Sm83Instr = Sm83Instr {
+    mnemonic: "XOR %a %a",
+    op_code: 0xAF,
+    immediate_args: &[],
+    stream_args: 0,
+};
 // CALL
 pub static INSTR_CALL: Sm83Instr = Sm83Instr {
     mnemonic: "CALL 'fn",
