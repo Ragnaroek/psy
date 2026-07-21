@@ -2,8 +2,6 @@
 #[path = "./mod_test.rs"]
 mod mod_test;
 
-use std::collections::HashMap;
-
 use crate::arch::sm83::{self, Sm83Instr};
 
 pub struct GBDisInstr {
