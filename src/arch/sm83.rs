@@ -265,6 +265,12 @@ pub static INSTR_LD_TO_DEREF_HL_FROM_A: Sm83Instr = Sm83Instr {
     immediate_args: &[],
     stream_args: 0,
 };
+pub static INSTR_LD_TO_DEREF_HL_DEC_FROM_A: Sm83Instr = Sm83Instr {
+    mnemonic: "LD (%hl -) %a",
+    op_code: 0x32,
+    immediate_args: &[],
+    stream_args: 0,
+};
 pub static INSTR_LD_TO_DEREF_HL_INC_FROM_A: Sm83Instr = Sm83Instr {
     mnemonic: "LD (%hl +) %a",
     op_code: 0x22,
@@ -402,7 +408,7 @@ pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
     /*0x2F*/ &INSTR_INVALID,
     /*0x30*/ &INSTR_INVALID,
     /*0x31*/ &INSTR_INVALID,
-    /*0x32*/ &INSTR_INVALID,
+    /*0x32*/ &INSTR_LD_TO_DEREF_HL_DEC_FROM_A,
     /*0x33*/ &INSTR_INVALID,
     /*0x34*/ &INSTR_INVALID,
     /*0x35*/ &INSTR_INVALID,
