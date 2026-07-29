@@ -373,6 +373,13 @@ pub static INSTR_XOR_A_A: Sm83Instr = Sm83Instr {
     immediate_args: &[],
     stream_args: 0,
 };
+// CPL
+pub static INSTR_CPL: Sm83Instr = Sm83Instr {
+    mnemonic: "CPL",
+    op_code: 0x2F,
+    immediate_args: &[],
+    stream_args: 0,
+};
 // CALL
 pub static INSTR_CALL: Sm83Instr = Sm83Instr {
     mnemonic: "CALL 'fn",
@@ -449,7 +456,7 @@ pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
     /*0x2C*/ &INSTR_INVALID,
     /*0x2D*/ &INSTR_INVALID,
     /*0x2E*/ &INSTR_INVALID,
-    /*0x2F*/ &INSTR_INVALID,
+    /*0x2F*/ &INSTR_CPL,
     /*0x30*/ &INSTR_INVALID,
     /*0x31*/ &INSTR_LD_TO_SP_FROM_IMMEDIATE,
     /*0x32*/ &INSTR_LD_TO_DEREF_HL_DEC_FROM_A,
