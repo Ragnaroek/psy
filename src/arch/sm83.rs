@@ -159,21 +159,24 @@ pub static INSTR_INC_A: Sm83Instr = Sm83Instr {
     immediate_args: &[],
     stream_args: 0,
 };
-
+pub static INSTR_INC_C: Sm83Instr = Sm83Instr {
+    mnemonic: "INC %c",
+    op_code: 0x0C,
+    immediate_args: &[],
+    stream_args: 0,
+};
 pub static INSTR_INC_BC: Sm83Instr = Sm83Instr {
     mnemonic: "INC %bc",
     op_code: 0x03,
     immediate_args: &[],
     stream_args: 0,
 };
-
 pub static INSTR_INC_DE: Sm83Instr = Sm83Instr {
     mnemonic: "INC %de",
     op_code: 0x13,
     immediate_args: &[],
     stream_args: 0,
 };
-
 pub static INSTR_INC_HL: Sm83Instr = Sm83Instr {
     mnemonic: "INC %hl",
     op_code: 0x23,
@@ -336,12 +339,17 @@ pub static INSTR_LDH_TO_IMMEDIATE_FROM_A: Sm83Instr = Sm83Instr {
     immediate_args: &[],
     stream_args: 1,
 };
-
 pub static INSTR_LDH_TO_A_FROM_IMMEDIATE: Sm83Instr = Sm83Instr {
     mnemonic: "LDH %a (0xFF00+n8)",
     op_code: 0xF0,
     immediate_args: &[],
     stream_args: 1,
+};
+pub static INSTR_LDH_TO_DEREF_C_FROM_A: Sm83Instr = Sm83Instr {
+    mnemonic: "LDH (%c) %a",
+    op_code: 0xE2,
+    immediate_args: &[],
+    stream_args: 0,
 };
 
 // CP
@@ -406,7 +414,7 @@ pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
     /*0x09*/ &INSTR_INVALID,
     /*0x0A*/ &INSTR_INVALID,
     /*0x0B*/ &INSTR_DEC_BC,
-    /*0x0C*/ &INSTR_INVALID,
+    /*0x0C*/ &INSTR_INC_C,
     /*0x0D*/ &INSTR_DEC_C,
     /*0x0E*/ &INSTR_LD_TO_C_FROM_IMMEDIATE,
     /*0x0F*/ &INSTR_INVALID,
@@ -620,7 +628,7 @@ pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
     /*0xDF*/ &INSTR_INVALID,
     /*0xE0*/ &INSTR_LDH_TO_IMMEDIATE_FROM_A,
     /*0xE1*/ &INSTR_INVALID,
-    /*0xE2*/ &INSTR_INVALID,
+    /*0xE2*/ &INSTR_LDH_TO_DEREF_C_FROM_A,
     /*0xE3*/ &INSTR_INVALID,
     /*0xE4*/ &INSTR_INVALID,
     /*0xE5*/ &INSTR_INVALID,
