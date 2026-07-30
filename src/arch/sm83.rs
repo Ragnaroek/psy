@@ -337,6 +337,12 @@ pub static INSTR_LD_TO_A_FROM_B: Sm83Instr = Sm83Instr {
     immediate_args: &[],
     stream_args: 0,
 };
+pub static INSTR_LD_TO_B_FROM_A: Sm83Instr = Sm83Instr {
+    mnemonic: "LD %b %a",
+    op_code: 0x47,
+    immediate_args: &[],
+    stream_args: 0,
+};
 
 // LDH
 pub static INSTR_LDH_TO_IMMEDIATE_FROM_A: Sm83Instr = Sm83Instr {
@@ -513,7 +519,7 @@ pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
     /*0x44*/ &INSTR_INVALID,
     /*0x45*/ &INSTR_INVALID,
     /*0x46*/ &INSTR_INVALID,
-    /*0x47*/ &INSTR_INVALID,
+    /*0x47*/ &INSTR_LD_TO_B_FROM_A,
     /*0x48*/ &INSTR_INVALID,
     /*0x49*/ &INSTR_INVALID,
     /*0x4A*/ &INSTR_INVALID,
