@@ -366,6 +366,13 @@ pub static INSTR_OR_A_C: Sm83Instr = Sm83Instr {
     immediate_args: &[],
     stream_args: 0,
 };
+// AND
+pub static INSTR_AND_A_IMMEDIATE: Sm83Instr = Sm83Instr {
+    mnemonic: "AND %a n8",
+    op_code: 0xE6,
+    immediate_args: &[],
+    stream_args: 0,
+};
 // XOR
 pub static INSTR_XOR_A_A: Sm83Instr = Sm83Instr {
     mnemonic: "XOR %a %a",
@@ -639,7 +646,7 @@ pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
     /*0xE3*/ &INSTR_INVALID,
     /*0xE4*/ &INSTR_INVALID,
     /*0xE5*/ &INSTR_INVALID,
-    /*0xE6*/ &INSTR_INVALID,
+    /*0xE6*/ &INSTR_AND_A_IMMEDIATE,
     /*0xE7*/ &INSTR_INVALID,
     /*0xE8*/ &INSTR_INVALID,
     /*0xE9*/ &INSTR_INVALID,
