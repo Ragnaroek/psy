@@ -4,6 +4,7 @@ mod sm83_test;
 
 pub const MAX_INSTRUCTION_BYTE_LENGTH: usize = 3;
 pub const SM83_NUM_INSTRUCTIONS: usize = 256;
+pub const SM83_NUM_PREFIX_INSTRUCTIONS: usize = 256;
 
 pub const REG_HL: &str = "hl";
 pub const REG_BC: &str = "bc";
@@ -23,6 +24,11 @@ pub struct Sm83Instr {
     pub op_code: u8,
     pub immediate_args: &'static [&'static str],
     pub stream_args: usize,
+}
+
+pub struct Sm83PrefixInstr {
+    pub mnemonic: &'static str,
+    pub op_code: u8,
 }
 
 impl Sm83Instr {
@@ -428,6 +434,11 @@ pub static INSTR_PREFIX: Sm83Instr = Sm83Instr {
     op_code: 0xCB,
     immediate_args: &[],
     stream_args: 1,
+};
+
+pub static INSTR_PREFIX_SWAP_A: Sm83PrefixInstr = Sm83PrefixInstr {
+    mnemonic: "SWAP %a",
+    op_code: 0x37,
 };
 
 pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
