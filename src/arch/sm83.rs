@@ -387,6 +387,13 @@ pub static INSTR_CPL: Sm83Instr = Sm83Instr {
     immediate_args: &[],
     stream_args: 0,
 };
+// ROTATE
+pub static INSTR_RRCA: Sm83Instr = Sm83Instr {
+    mnemonic: "RRCA",
+    op_code: 0x0F,
+    immediate_args: &[],
+    stream_args: 0,
+};
 // CALL
 pub static INSTR_CALL: Sm83Instr = Sm83Instr {
     mnemonic: "CALL 'fn",
@@ -431,7 +438,7 @@ pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
     /*0x0C*/ &INSTR_INC_C,
     /*0x0D*/ &INSTR_DEC_C,
     /*0x0E*/ &INSTR_LD_TO_C_FROM_IMMEDIATE,
-    /*0x0F*/ &INSTR_INVALID,
+    /*0x0F*/ &INSTR_RRCA,
     /*0x10*/ &INSTR_INVALID,
     /*0x11*/ &INSTR_LD_TO_DE_FROM_IMMEDIATE,
     /*0x12*/ &INSTR_LD_TO_DEREF_DE_FROM_A,
