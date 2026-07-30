@@ -422,6 +422,14 @@ pub static INSTR_RET: Sm83Instr = Sm83Instr {
     stream_args: 0,
 };
 
+// PREFIX / EXTENDED OP
+pub static INSTR_PREFIX: Sm83Instr = Sm83Instr {
+    mnemonic: "PREFIX",
+    op_code: 0xCB,
+    immediate_args: &[],
+    stream_args: 1,
+};
+
 pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
     /*0x00*/ &INSTR_NOP,
     /*0x01*/ &INSTR_LD_TO_BC_FROM_IMMEDIATE,
@@ -626,7 +634,7 @@ pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
     /*0xC8*/ &INSTR_INVALID,
     /*0xC9*/ &INSTR_RET,
     /*0xCA*/ &INSTR_INVALID,
-    /*0xCB*/ &INSTR_INVALID,
+    /*0xCB*/ &INSTR_PREFIX,
     /*0xCC*/ &INSTR_INVALID,
     /*0xCD*/ &INSTR_CALL,
     /*0xCE*/ &INSTR_INVALID,
