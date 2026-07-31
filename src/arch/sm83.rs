@@ -372,6 +372,12 @@ pub static INSTR_CP_IMMEDIATE: Sm83Instr = Sm83Instr {
     stream_args: 1,
 };
 // OR
+pub static INSTR_OR_A_B: Sm83Instr = Sm83Instr {
+    mnemonic: "OR %a %b",
+    op_code: 0xB0,
+    immediate_args: &[],
+    stream_args: 0,
+};
 pub static INSTR_OR_A_C: Sm83Instr = Sm83Instr {
     mnemonic: "OR %a %c",
     op_code: 0xB1,
@@ -624,7 +630,7 @@ pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
     &INSTR_INVALID,
     &INSTR_INVALID,
     /*0xAF*/ &INSTR_XOR_A_A,
-    /*0xB0*/ &INSTR_INVALID,
+    /*0xB0*/ &INSTR_OR_A_B,
     /*0xB1*/ &INSTR_OR_A_C,
     /*0xB2*/ &INSTR_INVALID,
     /*0xB3*/ &INSTR_INVALID,
