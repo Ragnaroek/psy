@@ -465,6 +465,14 @@ pub static INSTR_RET: Sm83Instr = Sm83Instr {
     stream_args: 0,
 };
 
+// RST
+pub static INSTR_RST_28: Sm83Instr = Sm83Instr {
+    mnemonic: "RST 0x28",
+    op_code: 0xEF,
+    immediate_args: &[],
+    stream_args: 0,
+};
+
 // PREFIX / EXTENDED OP
 pub static INSTR_PREFIX: Sm83Instr = Sm83Instr {
     mnemonic: "PREFIX",
@@ -718,7 +726,7 @@ pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
     /*0xEC*/ &INSTR_INVALID,
     /*0xED*/ &INSTR_INVALID,
     /*0xEE*/ &INSTR_INVALID,
-    /*0xEF*/ &INSTR_INVALID,
+    /*0xEF*/ &INSTR_RST_28,
     /*0xF0*/ &INSTR_LDH_TO_A_FROM_IMMEDIATE,
     /*0xF1*/ &INSTR_INVALID,
     /*0xF2*/ &INSTR_INVALID,
