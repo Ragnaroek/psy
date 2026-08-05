@@ -158,6 +158,14 @@ pub static INSTR_JR_IF_C: Sm83Instr = Sm83Instr {
     stream_args: 1,
 };
 
+// ADD
+pub static INSTR_ADD_A_A: Sm83Instr = Sm83Instr {
+    mnemonic: "ADD %a %a",
+    op_code: 0x87,
+    immediate_args: &[],
+    stream_args: 0,
+};
+
 // INC
 pub static INSTR_INC_A: Sm83Instr = Sm83Instr {
     mnemonic: "INC %a",
@@ -615,22 +623,22 @@ pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
     /*0x7D*/ &INSTR_INVALID,
     /*0x7E*/ &INSTR_LD_TO_A_FROM_DEREF_HL,
     /*0x7F*/ &INSTR_INVALID,
-    &INSTR_INVALID,
-    &INSTR_INVALID,
-    &INSTR_INVALID,
-    &INSTR_INVALID,
-    &INSTR_INVALID,
-    &INSTR_INVALID,
-    &INSTR_INVALID,
-    &INSTR_INVALID,
-    &INSTR_INVALID,
-    &INSTR_INVALID,
-    &INSTR_INVALID,
-    &INSTR_INVALID,
-    &INSTR_INVALID,
-    &INSTR_INVALID,
-    &INSTR_INVALID,
-    &INSTR_INVALID,
+    /*0x80*/ &INSTR_INVALID,
+    /*0x81*/ &INSTR_INVALID,
+    /*0x82*/ &INSTR_INVALID,
+    /*0x83*/ &INSTR_INVALID,
+    /*0x84*/ &INSTR_INVALID,
+    /*0x85*/ &INSTR_INVALID,
+    /*0x86*/ &INSTR_INVALID,
+    /*0x87*/ &INSTR_ADD_A_A,
+    /*0x88*/ &INSTR_INVALID,
+    /*0x89*/ &INSTR_INVALID,
+    /*0x8A*/ &INSTR_INVALID,
+    /*0x8B*/ &INSTR_INVALID,
+    /*0x8C*/ &INSTR_INVALID,
+    /*0x8D*/ &INSTR_INVALID,
+    /*0x8E*/ &INSTR_INVALID,
+    /*0x8F*/ &INSTR_INVALID,
     &INSTR_INVALID,
     &INSTR_INVALID,
     &INSTR_INVALID,
