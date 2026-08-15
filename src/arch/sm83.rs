@@ -22,8 +22,7 @@ pub const FLAG_NZ: &str = "nz";
 pub struct Sm83Instr {
     pub mnemonic: &'static str,
     pub op_code: u8,
-    pub immediate_args: &'static [&'static str],
-    pub stream_args: usize,
+    pub arg_bytes: usize,
 }
 
 pub struct Sm83PrefixInstr {
@@ -34,7 +33,7 @@ pub struct Sm83PrefixInstr {
 impl Sm83Instr {
     /// The length of the instruction in bytes.
     pub fn len(&self) -> usize {
-        self.immediate_args.len() + self.stream_args + 1 // +1 for the op code
+        self.arg_bytes + 1 // +1 for the op code
     }
 
     /// The (psy) text representation of the instruction.
@@ -46,15 +45,10 @@ impl Sm83Instr {
         str.push('(');
         str.push_str(self.mnemonic);
 
-        for arg in self.immediate_args {
-            str.push(' ');
-            str.push_str(arg);
-        }
-
         let ip = 1;
-        if self.stream_args == 0 {
+        if self.arg_bytes == 0 {
             str.push(')');
-        } else if self.stream_args == 1
+        } else if self.arg_bytes == 1
             && let Some(data) = binary
         {
             if ip < data.len() {
@@ -62,9 +56,9 @@ impl Sm83Instr {
             } else {
                 str.push_str("ERR)"); //placeholder for now
             }
-        } else if self.stream_args == 1 && binary.is_none() {
+        } else if self.arg_bytes == 1 && binary.is_none() {
             str.push_str(" n8)")
-        } else if self.stream_args == 2
+        } else if self.arg_bytes == 2
             && let Some(data) = binary
         {
             if ip + 1 < data.len() {
@@ -73,7 +67,7 @@ impl Sm83Instr {
             } else {
                 str.push_str("ERR)"); //placeholder for now
             }
-        } else if self.stream_args == 2 && binary.is_none() {
+        } else if self.arg_bytes == 2 && binary.is_none() {
             str.push_str(" n16)");
         }
 
@@ -86,415 +80,352 @@ impl Sm83Instr {
 pub static INSTR_INVALID: Sm83Instr = Sm83Instr {
     mnemonic: "!!!",
     op_code: 0xD3, //invalid op_code in SM83
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 
 pub static INSTR_NOP: Sm83Instr = Sm83Instr {
     mnemonic: "NOP",
     op_code: 0x00,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 
-pub static INSTR_RST: Sm83Instr = Sm83Instr {
-    mnemonic: "RST",
+// RST
+pub static INSTR_RST_38: Sm83Instr = Sm83Instr {
+    mnemonic: "RST 0x38",
     op_code: 0xFF,
-    immediate_args: &["0x38"],
-    stream_args: 0,
+    arg_bytes: 0,
+};
+
+pub static INSTR_RST_28: Sm83Instr = Sm83Instr {
+    mnemonic: "RST 0x28",
+    op_code: 0xEF,
+    arg_bytes: 0,
 };
 
 pub static INSTR_DI: Sm83Instr = Sm83Instr {
     mnemonic: "DI",
     op_code: 0xF3,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 
 pub static INSTR_EI: Sm83Instr = Sm83Instr {
     mnemonic: "EI",
     op_code: 0xFB,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 
 // JP
 pub static INSTR_JP: Sm83Instr = Sm83Instr {
     mnemonic: "JP",
     op_code: 0xC3,
-    immediate_args: &[],
-    stream_args: 2,
+    arg_bytes: 2,
 };
 pub static INSTR_JP_IF_C: Sm83Instr = Sm83Instr {
     mnemonic: "JP #C",
     op_code: 0xDA,
-    immediate_args: &[],
-    stream_args: 2,
+    arg_bytes: 2,
 };
 pub static INSTR_JP_IF_NZ: Sm83Instr = Sm83Instr {
     mnemonic: "JP #NZ",
     op_code: 0xC2,
-    immediate_args: &[],
-    stream_args: 2,
+    arg_bytes: 2,
 };
 
 // JR
 pub static INSTR_JR: Sm83Instr = Sm83Instr {
     mnemonic: "JR",
     op_code: 0x18,
-    immediate_args: &[],
-    stream_args: 1,
+    arg_bytes: 1,
 };
 pub static INSTR_JR_IF_NZ: Sm83Instr = Sm83Instr {
     mnemonic: "JR #NZ",
     op_code: 0x20,
-    immediate_args: &[],
-    stream_args: 1,
+    arg_bytes: 1,
 };
 pub static INSTR_JR_IF_C: Sm83Instr = Sm83Instr {
     mnemonic: "JR #C",
     op_code: 0x38,
-    immediate_args: &[],
-    stream_args: 1,
+    arg_bytes: 1,
 };
 
 // ADD
 pub static INSTR_ADD_A_A: Sm83Instr = Sm83Instr {
     mnemonic: "ADD %a %a",
     op_code: 0x87,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 
 // INC
 pub static INSTR_INC_A: Sm83Instr = Sm83Instr {
     mnemonic: "INC %a",
     op_code: 0x3C,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 pub static INSTR_INC_C: Sm83Instr = Sm83Instr {
     mnemonic: "INC %c",
     op_code: 0x0C,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 pub static INSTR_INC_BC: Sm83Instr = Sm83Instr {
     mnemonic: "INC %bc",
     op_code: 0x03,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 pub static INSTR_INC_DE: Sm83Instr = Sm83Instr {
     mnemonic: "INC %de",
     op_code: 0x13,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 pub static INSTR_INC_HL: Sm83Instr = Sm83Instr {
     mnemonic: "INC %hl",
     op_code: 0x23,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 
 // DEC
 pub static INSTR_DEC_A: Sm83Instr = Sm83Instr {
     mnemonic: "DEC %a",
     op_code: 0x3D,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 pub static INSTR_DEC_B: Sm83Instr = Sm83Instr {
     mnemonic: "DEC %b",
     op_code: 0x05,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 pub static INSTR_DEC_C: Sm83Instr = Sm83Instr {
     mnemonic: "DEC %c",
     op_code: 0x0D,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 pub static INSTR_DEC_BC: Sm83Instr = Sm83Instr {
     mnemonic: "DEC %bc",
     op_code: 0x0B,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 pub static INSTR_DEC_DE: Sm83Instr = Sm83Instr {
     mnemonic: "DEC %de",
     op_code: 0x1B,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 pub static INSTR_DEC_HL: Sm83Instr = Sm83Instr {
     mnemonic: "DEC %hl",
     op_code: 0x2B,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 // LD
 pub static INSTR_LD_TO_HL_FROM_IMMEDIATE: Sm83Instr = Sm83Instr {
     mnemonic: "LD %hl",
     op_code: 0x21,
-    immediate_args: &[],
-    stream_args: 2,
+    arg_bytes: 2,
 };
 pub static INSTR_LD_TO_DE_FROM_IMMEDIATE: Sm83Instr = Sm83Instr {
     mnemonic: "LD %de",
     op_code: 0x11,
-    immediate_args: &[],
-    stream_args: 2,
+    arg_bytes: 2,
 };
 pub static INSTR_LD_TO_BC_FROM_IMMEDIATE: Sm83Instr = Sm83Instr {
     mnemonic: "LD %bc",
     op_code: 0x01,
-    immediate_args: &[],
-    stream_args: 2,
+    arg_bytes: 2,
 };
 pub static INSTR_LD_TO_SP_FROM_IMMEDIATE: Sm83Instr = Sm83Instr {
     mnemonic: "LD %sp",
     op_code: 0x31,
-    immediate_args: &[],
-    stream_args: 2,
+    arg_bytes: 2,
 };
 pub static INSTR_LD_TO_A_FROM_IMMEDIATE: Sm83Instr = Sm83Instr {
     mnemonic: "LD %a",
     op_code: 0x3E,
-    immediate_args: &[],
-    stream_args: 1,
+    arg_bytes: 1,
 };
 pub static INSTR_LD_TO_A_FROM_DEREF_LABEL: Sm83Instr = Sm83Instr {
     mnemonic: "LD %a ('lbl)",
     op_code: 0xFA,
-    immediate_args: &[],
-    stream_args: 2,
+    arg_bytes: 2,
 };
 pub static INSTR_LD_TO_B_FROM_IMMEDIATE: Sm83Instr = Sm83Instr {
     mnemonic: "LD %b",
     op_code: 0x06,
-    immediate_args: &[],
-    stream_args: 1,
+    arg_bytes: 1,
 };
 pub static INSTR_LD_TO_C_FROM_IMMEDIATE: Sm83Instr = Sm83Instr {
     mnemonic: "LD %c",
     op_code: 0x0E,
-    immediate_args: &[],
-    stream_args: 1,
+    arg_bytes: 1,
 };
 pub static INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE: Sm83Instr = Sm83Instr {
     mnemonic: "LD (%hl)",
     op_code: 0x36,
-    immediate_args: &[],
-    stream_args: 1,
+    arg_bytes: 1,
 };
 pub static INSTR_LD_TO_DEREF_DE_FROM_A: Sm83Instr = Sm83Instr {
     mnemonic: "LD (%de) %a",
     op_code: 0x12,
-    immediate_args: &[],
-    stream_args: 1,
+    arg_bytes: 1,
 };
 pub static INSTR_LD_TO_DEREF_HL_FROM_A: Sm83Instr = Sm83Instr {
     mnemonic: "LD (%hl) %a",
     op_code: 0x77,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 pub static INSTR_LD_TO_DEREF_HL_DEC_FROM_A: Sm83Instr = Sm83Instr {
     mnemonic: "LD (%hl -) %a",
     op_code: 0x32,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 pub static INSTR_LD_TO_DEREF_HL_INC_FROM_A: Sm83Instr = Sm83Instr {
     mnemonic: "LD (%hl +) %a",
     op_code: 0x22,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 pub static INSTR_LD_TO_DEREF_LABEL_FROM_A: Sm83Instr = Sm83Instr {
     mnemonic: "LD ('lbl) %a",
     op_code: 0xEA,
-    immediate_args: &[],
-    stream_args: 2,
+    arg_bytes: 2,
 };
 
 pub static INSTR_LD_TO_A_FROM_DEREF_HL: Sm83Instr = Sm83Instr {
     mnemonic: "LD %a (%hl)",
     op_code: 0x7E,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 pub static INSTR_LD_TO_A_FROM_DEREF_HL_INC: Sm83Instr = Sm83Instr {
     mnemonic: "LD %a (%hl +)",
     op_code: 0x2A,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 pub static INSTR_LD_TO_A_FROM_DEREF_DE: Sm83Instr = Sm83Instr {
     mnemonic: "LD %a (%de)",
     op_code: 0x1A,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 pub static INSTR_LD_TO_A_FROM_B: Sm83Instr = Sm83Instr {
     mnemonic: "LD %a %b",
     op_code: 0x78,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 pub static INSTR_LD_TO_A_FROM_C: Sm83Instr = Sm83Instr {
     mnemonic: "LD %a %c",
     op_code: 0x79,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 pub static INSTR_LD_TO_B_FROM_A: Sm83Instr = Sm83Instr {
     mnemonic: "LD %b %a",
     op_code: 0x47,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 pub static INSTR_LD_TO_C_FROM_A: Sm83Instr = Sm83Instr {
     mnemonic: "LD %c %a",
     op_code: 0x4F,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 
 // LDH
 pub static INSTR_LDH_TO_IMMEDIATE_FROM_A: Sm83Instr = Sm83Instr {
     mnemonic: "LDH (0xFF00+n8) %a",
     op_code: 0xE0,
-    immediate_args: &[],
-    stream_args: 1,
+    arg_bytes: 1,
 };
 pub static INSTR_LDH_TO_A_FROM_IMMEDIATE: Sm83Instr = Sm83Instr {
     mnemonic: "LDH %a (0xFF00+n8)",
     op_code: 0xF0,
-    immediate_args: &[],
-    stream_args: 1,
+    arg_bytes: 1,
 };
 pub static INSTR_LDH_TO_DEREF_C_FROM_A: Sm83Instr = Sm83Instr {
     mnemonic: "LDH (%c) %a",
     op_code: 0xE2,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 
 // CP
 pub static INSTR_CP_IMMEDIATE: Sm83Instr = Sm83Instr {
     mnemonic: "CP",
     op_code: 0xFE,
-    immediate_args: &[],
-    stream_args: 1,
+    arg_bytes: 1,
 };
 // OR
 pub static INSTR_OR_A_B: Sm83Instr = Sm83Instr {
     mnemonic: "OR %a %b",
     op_code: 0xB0,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 pub static INSTR_OR_A_C: Sm83Instr = Sm83Instr {
     mnemonic: "OR %a %c",
     op_code: 0xB1,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 // AND
 pub static INSTR_AND_A_IMMEDIATE: Sm83Instr = Sm83Instr {
     mnemonic: "AND %a n8",
     op_code: 0xE6,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 pub static INSTR_AND_A_C: Sm83Instr = Sm83Instr {
     mnemonic: "AND %a %c",
     op_code: 0xA1,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 
 // XOR
 pub static INSTR_XOR_A_A: Sm83Instr = Sm83Instr {
     mnemonic: "XOR %a %a",
     op_code: 0xAF,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 pub static INSTR_XOR_A_C: Sm83Instr = Sm83Instr {
     mnemonic: "XOR %a %c",
     op_code: 0xA9,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 // CPL
 pub static INSTR_CPL: Sm83Instr = Sm83Instr {
     mnemonic: "CPL",
     op_code: 0x2F,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 // ROTATE
 pub static INSTR_RRCA: Sm83Instr = Sm83Instr {
     mnemonic: "RRCA",
     op_code: 0x0F,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 // CALL
 pub static INSTR_CALL: Sm83Instr = Sm83Instr {
     mnemonic: "CALL 'fn",
     op_code: 0xCD,
-    immediate_args: &[],
-    stream_args: 2,
+    arg_bytes: 2,
 };
 pub static INSTR_CALL_IF_C: Sm83Instr = Sm83Instr {
     mnemonic: "CALL #c 'fn",
     op_code: 0xDC,
-    immediate_args: &[],
-    stream_args: 2,
+    arg_bytes: 2,
 };
 pub static INSTR_CALL_IF_NZ: Sm83Instr = Sm83Instr {
     mnemonic: "CALL #nz 'fn",
     op_code: 0xC4,
-    immediate_args: &[],
-    stream_args: 2,
+    arg_bytes: 2,
 };
 
 // RET
 pub static INSTR_RET: Sm83Instr = Sm83Instr {
     mnemonic: "RET",
     op_code: 0xC9,
-    immediate_args: &[],
-    stream_args: 0,
-};
-
-// RST
-pub static INSTR_RST_28: Sm83Instr = Sm83Instr {
-    mnemonic: "RST 0x28",
-    op_code: 0xEF,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 
 // POP
 pub static INSTR_POP_HL: Sm83Instr = Sm83Instr {
     mnemonic: "POP %hl",
     op_code: 0xE1,
-    immediate_args: &[],
-    stream_args: 0,
+    arg_bytes: 0,
 };
 
 // PREFIX / EXTENDED OP
 pub static INSTR_PREFIX: Sm83Instr = Sm83Instr {
     mnemonic: "PREFIX",
     op_code: 0xCB,
-    immediate_args: &[],
-    stream_args: 1,
+    arg_bytes: 1,
 };
 
 pub static INSTR_PREFIX_SWAP_A: Sm83PrefixInstr = Sm83PrefixInstr {
@@ -758,7 +689,7 @@ pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
     /*0xFC*/ &INSTR_INVALID,
     /*0xFD*/ &INSTR_INVALID,
     /*0xFE*/ &INSTR_CP_IMMEDIATE,
-    /*0xFF*/ &INSTR_RST,
+    /*0xFF*/ &INSTR_RST_38,
 ];
 
 pub fn decode(op: u8) -> &'static Sm83Instr {

@@ -20,7 +20,7 @@ pub fn disassemble(data: &[u8]) -> Result<GBDisassembly, String> {
     while ip < data.len() {
         let start_ip = ip;
         let instr = sm83::decode(data[start_ip]);
-        ip += 1 + instr.immediate_args.len() + instr.stream_args;
+        ip += instr.len();
         instructions.push(GBDisInstr {
             offset: start_ip,
             len: ip - start_ip,
