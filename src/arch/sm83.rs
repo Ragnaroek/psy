@@ -130,6 +130,11 @@ pub static INSTR_JP_IF_NZ: Sm83Instr = Sm83Instr {
     op_code: 0xC2,
     arg_bytes: 2,
 };
+pub static INSTR_JP_HL: Sm83Instr = Sm83Instr {
+    mnemonic: "JP %hl",
+    op_code: 0xE9,
+    arg_bytes: 0,
+};
 
 // JR
 pub static INSTR_JR: Sm83Instr = Sm83Instr {
@@ -158,6 +163,11 @@ pub static INSTR_ADD_HL_DE: Sm83Instr = Sm83Instr {
     mnemonic: "ADD %hl %de",
     op_code: 0x19,
     arg_bytes: 0,
+};
+pub static INSTR_ADD_SP_IMMEDIATE: Sm83Instr = Sm83Instr {
+    mnemonic: "ADD %sp n8",
+    op_code: 0xE8,
+    arg_bytes: 1,
 };
 
 // INC
@@ -696,8 +706,8 @@ pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
     /*0xE5*/ &INSTR_INVALID,
     /*0xE6*/ &INSTR_AND_A_IMMEDIATE,
     /*0xE7*/ &INSTR_INVALID,
-    /*0xE8*/ &INSTR_INVALID,
-    /*0xE9*/ &INSTR_INVALID,
+    /*0xE8*/ &INSTR_ADD_SP_IMMEDIATE,
+    /*0xE9*/ &INSTR_JP_HL,
     /*0xEA*/ &INSTR_LD_TO_DEREF_LABEL_FROM_A,
     /*0xEB*/ &INSTR_INVALID,
     /*0xEC*/ &INSTR_INVALID,
