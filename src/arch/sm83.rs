@@ -397,7 +397,7 @@ pub static INSTR_OR_A_C: Sm83Instr = Sm83Instr {
 pub static INSTR_AND_A_IMMEDIATE: Sm83Instr = Sm83Instr {
     mnemonic: "AND %a n8",
     op_code: 0xE6,
-    arg_bytes: 0,
+    arg_bytes: 1,
 };
 pub static INSTR_AND_A_C: Sm83Instr = Sm83Instr {
     mnemonic: "AND %a %c",
