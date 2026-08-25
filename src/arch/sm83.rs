@@ -458,6 +458,11 @@ pub static INSTR_PUSH_DE: Sm83Instr = Sm83Instr {
     op_code: 0xD5,
     arg_bytes: 0,
 };
+pub static INSTR_PUSH_HL: Sm83Instr = Sm83Instr {
+    mnemonic: "PUSH %hl",
+    op_code: 0xE5,
+    arg_bytes: 0,
+};
 
 // POP
 pub static INSTR_POP_HL: Sm83Instr = Sm83Instr {
@@ -713,7 +718,7 @@ pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
     /*0xE2*/ &INSTR_LDH_TO_DEREF_C_FROM_A,
     /*0xE3*/ &INSTR_INVALID,
     /*0xE4*/ &INSTR_INVALID,
-    /*0xE5*/ &INSTR_INVALID,
+    /*0xE5*/ &INSTR_PUSH_HL,
     /*0xE6*/ &INSTR_AND_A_IMMEDIATE,
     /*0xE7*/ &INSTR_INVALID,
     /*0xE8*/ &INSTR_ADD_SP_IMMEDIATE,
