@@ -142,6 +142,11 @@ pub static INSTR_JR: Sm83Instr = Sm83Instr {
     op_code: 0x18,
     arg_bytes: 1,
 };
+pub static INSTR_JR_IF_Z: Sm83Instr = Sm83Instr {
+    mnemonic: "JR #Z",
+    op_code: 0x28,
+    arg_bytes: 1,
+};
 pub static INSTR_JR_IF_NZ: Sm83Instr = Sm83Instr {
     mnemonic: "JR #NZ",
     op_code: 0x20,
@@ -549,7 +554,7 @@ pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
     /*0x25*/ &INSTR_INVALID,
     /*0x26*/ &INSTR_INVALID,
     /*0x27*/ &INSTR_INVALID,
-    /*0x28*/ &INSTR_INVALID,
+    /*0x28*/ &INSTR_JR_IF_Z,
     /*0x29*/ &INSTR_INVALID,
     /*0x2A*/ &INSTR_LD_TO_A_FROM_DEREF_HL_INC,
     /*0x2B*/ &INSTR_DEC_HL,
