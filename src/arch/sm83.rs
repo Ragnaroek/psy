@@ -463,6 +463,11 @@ pub static INSTR_PUSH_AF: Sm83Instr = Sm83Instr {
     op_code: 0xF5,
     arg_bytes: 0,
 };
+pub static INSTR_PUSH_BC: Sm83Instr = Sm83Instr {
+    mnemonic: "PUSH %bc",
+    op_code: 0xC5,
+    arg_bytes: 0,
+};
 pub static INSTR_PUSH_DE: Sm83Instr = Sm83Instr {
     mnemonic: "PUSH %de",
     op_code: 0xD5,
@@ -701,7 +706,7 @@ pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
     /*0xC2*/ &INSTR_JP_IF_NZ,
     /*0xC3*/ &INSTR_JP,
     /*0xC4*/ &INSTR_CALL_IF_NZ,
-    /*0xC5*/ &INSTR_INVALID,
+    /*0xC5*/ &INSTR_PUSH_BC,
     /*0xC6*/ &INSTR_INVALID,
     /*0xC7*/ &INSTR_INVALID,
     /*0xC8*/ &INSTR_INVALID,
