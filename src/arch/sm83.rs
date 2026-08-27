@@ -485,6 +485,16 @@ pub static INSTR_PUSH_HL: Sm83Instr = Sm83Instr {
 };
 
 // POP
+pub static INSTR_POP_AF: Sm83Instr = Sm83Instr {
+    mnemonic: "POP %af",
+    op_code: 0xF1,
+    arg_bytes: 0,
+};
+pub static INSTR_POP_BC: Sm83Instr = Sm83Instr {
+    mnemonic: "POP %bc",
+    op_code: 0xC1,
+    arg_bytes: 0,
+};
 pub static INSTR_POP_DE: Sm83Instr = Sm83Instr {
     mnemonic: "POP %de",
     op_code: 0xD1,
@@ -712,7 +722,7 @@ pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
     /*0xBE*/ &INSTR_INVALID,
     /*0xBF*/ &INSTR_INVALID,
     /*0xC0*/ &INSTR_INVALID,
-    /*0xC1*/ &INSTR_INVALID,
+    /*0xC1*/ &INSTR_POP_BC,
     /*0xC2*/ &INSTR_JP_IF_NZ,
     /*0xC3*/ &INSTR_JP,
     /*0xC4*/ &INSTR_CALL_IF_NZ,
@@ -760,7 +770,7 @@ pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
     /*0xEE*/ &INSTR_INVALID,
     /*0xEF*/ &INSTR_RST_28,
     /*0xF0*/ &INSTR_LDH_TO_A_FROM_IMMEDIATE,
-    /*0xF1*/ &INSTR_INVALID,
+    /*0xF1*/ &INSTR_POP_AF,
     /*0xF2*/ &INSTR_INVALID,
     /*0xF3*/ &INSTR_DI,
     /*0xF4*/ &INSTR_INVALID,
