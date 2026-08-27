@@ -125,6 +125,11 @@ pub static INSTR_JP_IF_C: Sm83Instr = Sm83Instr {
     op_code: 0xDA,
     arg_bytes: 2,
 };
+pub static INSTR_JP_IF_Z: Sm83Instr = Sm83Instr {
+    mnemonic: "JP #Z",
+    op_code: 0xCA,
+    arg_bytes: 2,
+};
 pub static INSTR_JP_IF_NZ: Sm83Instr = Sm83Instr {
     mnemonic: "JP #NZ",
     op_code: 0xC2,
@@ -731,7 +736,7 @@ pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
     /*0xC7*/ &INSTR_INVALID,
     /*0xC8*/ &INSTR_INVALID,
     /*0xC9*/ &INSTR_RET,
-    /*0xCA*/ &INSTR_INVALID,
+    /*0xCA*/ &INSTR_JP_IF_Z,
     /*0xCB*/ &INSTR_PREFIX,
     /*0xCC*/ &INSTR_INVALID,
     /*0xCD*/ &INSTR_CALL,
