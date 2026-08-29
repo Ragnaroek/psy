@@ -243,6 +243,11 @@ pub static INSTR_DEC_HL: Sm83Instr = Sm83Instr {
     op_code: 0x2B,
     arg_bytes: 0,
 };
+pub static INSTR_DEC_DEREF_HL: Sm83Instr = Sm83Instr {
+    mnemonic: "DEC (%hl)",
+    op_code: 0x35,
+    arg_bytes: 0,
+};
 // LD
 pub static INSTR_LD_TO_HL_FROM_IMMEDIATE: Sm83Instr = Sm83Instr {
     mnemonic: "LD %hl",
@@ -592,7 +597,7 @@ pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
     /*0x32*/ &INSTR_LD_TO_DEREF_HL_DEC_FROM_A,
     /*0x33*/ &INSTR_INVALID,
     /*0x34*/ &INSTR_INVALID,
-    /*0x35*/ &INSTR_INVALID,
+    /*0x35*/ &INSTR_DEC_DEREF_HL,
     /*0x36*/ &INSTR_LD_TO_DEREF_HL_FROM_IMMEDIATE,
     /*0x37*/ &INSTR_INVALID,
     /*0x38*/ &INSTR_JR_IF_C,
