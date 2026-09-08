@@ -476,6 +476,11 @@ pub static INSTR_RET: Sm83Instr = Sm83Instr {
     op_code: 0xC9,
     arg_bytes: 0,
 };
+pub static INSTR_RET_NZ: Sm83Instr = Sm83Instr {
+    mnemonic: "RET #nz",
+    op_code: 0xC0,
+    arg_bytes: 0,
+};
 
 // PUSH
 pub static INSTR_PUSH_AF: Sm83Instr = Sm83Instr {
@@ -736,7 +741,7 @@ pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
     /*0xBD*/ &INSTR_INVALID,
     /*0xBE*/ &INSTR_INVALID,
     /*0xBF*/ &INSTR_INVALID,
-    /*0xC0*/ &INSTR_INVALID,
+    /*0xC0*/ &INSTR_RET_NZ,
     /*0xC1*/ &INSTR_POP_BC,
     /*0xC2*/ &INSTR_JP_IF_NZ,
     /*0xC3*/ &INSTR_JP,
