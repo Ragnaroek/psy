@@ -548,6 +548,11 @@ pub static INSTR_PREFIX_RST_7_DEREF_HL: Sm83PrefixInstr = Sm83PrefixInstr {
     op_code: 0xBE,
 };
 
+pub static INSTR_PREFIX_BIT_0_A: Sm83PrefixInstr = Sm83PrefixInstr {
+    mnemonic: "BIT 0 %a",
+    op_code: 0x47,
+};
+
 pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
     /*0x00*/ &INSTR_NOP,
     /*0x01*/ &INSTR_LD_TO_BC_FROM_IMMEDIATE,
