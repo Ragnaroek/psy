@@ -460,18 +460,28 @@ pub static INSTR_XOR_A_C: Sm83Instr = Sm83Instr {
     op_code: 0xA9,
     arg_bytes: 0,
 };
+
+// CP
+pub static INSTR_CP_A_C: Sm83Instr = Sm83Instr {
+    mnemonic: "CP %a %c",
+    op_code: 0xB9,
+    arg_bytes: 0,
+};
+
 // CPL
 pub static INSTR_CPL: Sm83Instr = Sm83Instr {
     mnemonic: "CPL",
     op_code: 0x2F,
     arg_bytes: 0,
 };
+
 // ROTATE
 pub static INSTR_RRCA: Sm83Instr = Sm83Instr {
     mnemonic: "RRCA",
     op_code: 0x0F,
     arg_bytes: 0,
 };
+
 // CALL
 pub static INSTR_CALL: Sm83Instr = Sm83Instr {
     mnemonic: "CALL 'fn",
@@ -758,7 +768,7 @@ pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
     /*0xB6*/ &INSTR_INVALID,
     /*0xB7*/ &INSTR_INVALID,
     /*0xB8*/ &INSTR_INVALID,
-    /*0xB9*/ &INSTR_INVALID,
+    /*0xB9*/ &INSTR_CP_A_C,
     /*0xBA*/ &INSTR_INVALID,
     /*0xBB*/ &INSTR_INVALID,
     /*0xBC*/ &INSTR_INVALID,
