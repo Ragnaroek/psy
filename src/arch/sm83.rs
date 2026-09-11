@@ -427,7 +427,11 @@ pub static INSTR_OR_A_C: Sm83Instr = Sm83Instr {
     op_code: 0xB1,
     arg_bytes: 0,
 };
-
+pub static INSTR_OR_A_D: Sm83Instr = Sm83Instr {
+    mnemonic: "OR %a %d",
+    op_code: 0xB2,
+    arg_bytes: 0,
+};
 // AND
 pub static INSTR_AND_A_IMMEDIATE: Sm83Instr = Sm83Instr {
     mnemonic: "AND %a n8",
@@ -747,7 +751,7 @@ pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
     /*0xAF*/ &INSTR_XOR_A_A,
     /*0xB0*/ &INSTR_OR_A_B,
     /*0xB1*/ &INSTR_OR_A_C,
-    /*0xB2*/ &INSTR_INVALID,
+    /*0xB2*/ &INSTR_OR_A_D,
     /*0xB3*/ &INSTR_INVALID,
     /*0xB4*/ &INSTR_INVALID,
     /*0xB5*/ &INSTR_INVALID,
