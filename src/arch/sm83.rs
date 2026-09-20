@@ -427,6 +427,11 @@ pub static INSTR_CP_IMMEDIATE: Sm83Instr = Sm83Instr {
     arg_bytes: 1,
 };
 // OR
+pub static INSTR_OR_A_A: Sm83Instr = Sm83Instr {
+    mnemonic: "OR %a %a",
+    op_code: 0xB7,
+    arg_bytes: 0,
+};
 pub static INSTR_OR_A_B: Sm83Instr = Sm83Instr {
     mnemonic: "OR %a %b",
     op_code: 0xB0,
@@ -575,6 +580,13 @@ pub static INSTR_POP_HL: Sm83Instr = Sm83Instr {
     arg_bytes: 0,
 };
 
+// DAA
+pub static INSTR_DAA: Sm83Instr = Sm83Instr {
+    mnemonic: "DAA",
+    op_code: 0x27,
+    arg_bytes: 0,
+};
+
 // PREFIX / EXTENDED OP
 pub static INSTR_PREFIX: Sm83Instr = Sm83Instr {
     mnemonic: "PREFIX",
@@ -642,7 +654,7 @@ pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
     /*0x24*/ &INSTR_INVALID,
     /*0x25*/ &INSTR_DEC_H,
     /*0x26*/ &INSTR_LD_TO_H_FROM_IMMEDIATE,
-    /*0x27*/ &INSTR_INVALID,
+    /*0x27*/ &INSTR_DAA,
     /*0x28*/ &INSTR_JR_IF_Z,
     /*0x29*/ &INSTR_INVALID,
     /*0x2A*/ &INSTR_LD_TO_A_FROM_DEREF_HL_INC,
@@ -786,7 +798,7 @@ pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
     /*0xB4*/ &INSTR_INVALID,
     /*0xB5*/ &INSTR_INVALID,
     /*0xB6*/ &INSTR_INVALID,
-    /*0xB7*/ &INSTR_INVALID,
+    /*0xB7*/ &INSTR_OR_A_A,
     /*0xB8*/ &INSTR_INVALID,
     /*0xB9*/ &INSTR_CP_A_C,
     /*0xBA*/ &INSTR_INVALID,
