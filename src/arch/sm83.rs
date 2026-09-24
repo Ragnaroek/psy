@@ -186,6 +186,11 @@ pub static INSTR_INC_A: Sm83Instr = Sm83Instr {
     op_code: 0x3C,
     arg_bytes: 0,
 };
+pub static INSTR_INC_B: Sm83Instr = Sm83Instr {
+    mnemonic: "INC %b",
+    op_code: 0x04,
+    arg_bytes: 0,
+};
 pub static INSTR_INC_C: Sm83Instr = Sm83Instr {
     mnemonic: "INC %c",
     op_code: 0x0C,
@@ -624,7 +629,7 @@ pub static INSTRUCTIONS: [&Sm83Instr; SM83_NUM_INSTRUCTIONS] = [
     /*0x01*/ &INSTR_LD_TO_BC_FROM_IMMEDIATE,
     /*0x02*/ &INSTR_LD_TO_DEREF_BC_FROM_A,
     /*0x03*/ &INSTR_INC_BC,
-    /*0x04*/ &INSTR_INVALID,
+    /*0x04*/ &INSTR_INC_B,
     /*0x05*/ &INSTR_DEC_B,
     /*0x06*/ &INSTR_LD_TO_B_FROM_IMMEDIATE,
     /*0x07*/ &INSTR_INVALID,
